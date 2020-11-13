@@ -18,7 +18,7 @@ int t_StdHepLd[1000];
 int t_StdHepFm[1000];
 int t_StdHepLm[1000];
 
-void Branch::SetBranchAddress(TChain * tree)
+void Branch::SetBranchAddress(const std::unique_ptr<TChain>& tree)
 {
     tree->SetBranchAddress("EvtNum",&t_EvtNum);
     tree->SetBranchAddress("EvtXSec",&t_EvtXSec);

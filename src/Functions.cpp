@@ -41,7 +41,7 @@ bool Function::Parsing(int argc, char * argv[])
     return true;
 }
 
-bool Function::InputFile(TChain * tree)
+bool Function::InputFile(const std::unique_ptr<TChain>& tree)
 {
     if(Option::name_input_file.size() != 0)
     {

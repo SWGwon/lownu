@@ -1,6 +1,8 @@
 #ifndef BRANCH_H
 #define BRANCH_H
 
+#include <memory>
+
 #include "TChain.h"
 
 extern int t_EvtNum;
@@ -23,7 +25,7 @@ extern int t_StdHepLm[1000];
 
 namespace Branch
 {
-    void SetBranchAddress(TChain * tree);
+    void SetBranchAddress(const std::unique_ptr<TChain>&  tree);
 }
 
 #endif

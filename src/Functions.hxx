@@ -2,6 +2,7 @@
 #define FUNCTION_H
 
 #include "TChain.h"
+#include <memory>
 
 namespace Function
 {
@@ -9,7 +10,7 @@ namespace Function
 
     bool Parsing(int argc, char * argv[]);
 
-    bool InputFile(TChain * tree);
+    bool InputFile(const std::unique_ptr<TChain>& tree);
 }
 
 #endif
