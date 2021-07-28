@@ -1,2 +1,4 @@
 /build
 /src/*swp
+/src/app.cc
+/src/sim*
