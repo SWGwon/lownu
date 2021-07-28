@@ -24,8 +24,7 @@ class FCN : public RooAbsReal
     public:
         FCN() : mNBins(0), mBinStep(0) {};
         FCN(const int inNBin, const int inBinStep) 
-            : mNBins(inNBin), mBinStep(inBinStep)
-        {
+            : mNBins(inNBin), mBinStep(inBinStep) {
             _pulls = new RooListProxy("_pulls","_pulls",this);
             RooRealVar* Par[this->mNBins];
             for (int i = 0; i < this->mNBins; i++) {
@@ -48,15 +47,13 @@ class FCN : public RooAbsReal
             this->SetToyCovarianceMatrix();
         }
 
-        virtual TObject* clone(const char* newname = 0) const
-        {
+        virtual TObject* clone(const char* newname = 0) const {
             return new FCN();
         }
 
         virtual Double_t evaluate() const;
 
-        ~FCN()
-        {
+        ~FCN() {
             delete mHistGenieNominal; 
             delete mHistGenieShift;
             delete mHistG4Nominal;
