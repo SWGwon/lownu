@@ -1,4 +1,4 @@
-#include "LownuFCN.hxx"
+#include "LowNuFCN.hxx"
 
 int main()
 {

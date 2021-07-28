@@ -1,4 +1,4 @@
-#include "LownuFCN.hxx"
+#include "LowNuFCN.hxx"
 
 LownuFCN::LownuFCN(int numPars, double inError)
     : mNumberOfParameters(numPars), mError(inError) {

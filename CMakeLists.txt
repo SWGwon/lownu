@@ -1,5 +1,4 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.1)
-PROJECT (LownuFitter)
 
 SET(CMAKE_CXX_STANDARD 17)
 
@@ -7,9 +6,22 @@ FIND_PACKAGE(ROOT REQUIRED
     COMPONENTS RIO Net RooFit Html Minuit RooFitCore)
 INCLUDE(${ROOT_USE_FILE})
 
-SET(source
-    src/LownuFitter.cxx
-    src/LownuFCN.cxx)
+#TARGET_INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/src)
+#src/LownuFitter.cxx
+#src/LownuFCN.cxx)
 
-ADD_EXECUTABLE(${CMAKE_PROJECT_NAME} ${source})
-TARGET_LINK_LIBRARIES(${CMAKE_PROJECT_NAME} ${ROOT_LIBRARIES})
+SET(LOWNU_SRC
+    src/LowNuFitter.cxx 
+    src/LowNuFCN.cxx
+    src/Utils.cxx)
+
+ADD_EXECUTABLE(LowNuFitter ${LOWNU_SRC})
+TARGET_LINK_LIBRARIES(LowNuFitter ${ROOT_LIBRARIES})
+
+SET(HIGHNU_SRC
+    src/LowNuFitter.cxx 
+    src/LowNuFCN.cxx
+    src/Utils.cxx)
+
+ADD_EXECUTABLE(HighNuFitter ${HIGHNU_SRC})
+TARGET_LINK_LIBRARIES(HighNuFitter ${ROOT_LIBRARIES})
