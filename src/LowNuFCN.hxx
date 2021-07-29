@@ -29,13 +29,17 @@ class LowNuFCN : public RooAbsReal {
         virtual Double_t evaluate() const;
 
         const int GetNumberOfParameters() const {return this->mNumberOfParameters;};
+        RooListProxy* GetPull() {return this->_pulls;};
+        TH1D GetPrediction(RooListProxy* _pulls) const; 
+        TH1D GetData() {return this->mData;};
 
     private:
         RooArgList _parlist;
         RooListProxy* _pulls;
         std::string mFluxSystematicFileName;
         std::string mDataFileName;
-        TH1D* mData;
+
+        TH1D mData;
         const int mBins = 16;
         int mNumberOfParameters;
         double mError;
@@ -58,9 +62,9 @@ class LowNuFCN : public RooAbsReal {
         void FillData();
         void SetPullCV();
         void SetPullUnc();
-        TMatrixD* PrepareCovMatrix(Int_t nBins, TH1D pred) const;
-        TMatrixD* PrepareCovMatrix2(Int_t nBins) const;
-        TH1D PreparePrediction(RooListProxy* _pulls) const; 
+        TMatrixD* PrepareCovMatrix() const;
+        TMatrixD* PrepareCovMatrix2() const;
+        double GetWeight(int inBin) const;
         Double_t FillEv(RooListProxy* _pulls) const;
         Double_t FillEv2(RooListProxy* _pulls) const;
         Double_t ExtraPull(RooListProxy* _pulls) const;
