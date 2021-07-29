@@ -1,26 +1,15 @@
+#include <unistd.h>
 #include "HighNuFCN.hxx"
 #include "TLegend.h"
 
-int main(int argc, char** argv)
+int nBins;
+int binStep;
+bool ParseArgs(int argc, char* argv[]);
+void PrintSyntax();
+//------------------------------------------------------------------------------
+int main(int argc, char* argv[])
 {
-    int nBins;
-    int binStep;
-    if (argv[1] && argv[2]) {
-        nBins = std::stoi(argv[1]);
-        binStep = std::stoi(argv[2]);
-        std::cout << "bin number: " << nBins <<  std::endl;
-        std::cout << "bin step: " << binStep <<  std::endl;
-    } else {
-        std::cout << "invalide args" << std::endl;
-        std::cout << "./HighnuFit binNumber binStep" << std::endl;
-        return 0;
-    }
-    if (argv[3]) {
-        TOY = argv[3];
-        std::cout << "toy == true" << std::endl;
-        std::cout << "corr?";
-        std::cin >> TOYCORR;
-    }
+    if (!ParseArgs(argc, argv)) return 0;
 
     gStyle->SetOptStat(0);
     gStyle->SetPaintTextFormat("2.3f");
@@ -59,4 +48,54 @@ int main(int argc, char** argv)
     c2.SaveAs("slide.pdf");
 
     fcn.SaveHist("modelHist");
+}
+//------------------------------------------------------------------------------
+bool ParseArgs(int argc, char* argv[]) {
+    bool status = false;
+    const char* optstring = "b:s:t";
+    char option;
+
+    optind = 1;
+    while (-1 != (option = getopt(argc, argv, optstring))) {
+        switch (option) {
+            case 'b' : 
+                {
+                    nBins = std::stoi(optarg);
+                    break;
+                }
+            case 's' :
+                {
+                    binStep = std::stoi(optarg);
+                    break;
+                }
+            case 't' :
+                {
+                    TOY = true;
+                    std::cout << "toy == true" << std::endl;
+                    std::cout << "corr?";
+                    std::cin >> TOYCORR;
+                    break;
+                }
+            case 'h' :
+                {
+                    PrintSyntax();
+                    break;
+                }
+        }
+    }
+
+    if (nBins != 0 && binStep != 0) status = true;
+    if (!status) PrintSyntax();
+    return status; 
+}
+//------------------------------------------------------------------------------
+void PrintSyntax() {
+    std::cout << "./HighNuFitter\n";
+    std::cout << "  -b ${number of bin} (REQUIRED)\n";
+    std::cout << "  -s ${bin step size} (REQUIRED)\n";
+    std::cout << "  -t                  (OPTIONAL)\n";
+    std::cout << "    : use toy model\n";
+    std::cout << "  -h\n";
+    std::cout << "    : show this message\n";
+    std::cout << std::endl;
 }

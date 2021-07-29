@@ -19,8 +19,8 @@ ADD_EXECUTABLE(LowNuFitter ${LOWNU_SRC})
 TARGET_LINK_LIBRARIES(LowNuFitter ${ROOT_LIBRARIES})
 
 SET(HIGHNU_SRC
-    src/LowNuFitter.cxx 
-    src/LowNuFCN.cxx
+    src/HighNuFitter.cxx 
+    src/HighNuFCN.cxx
     src/Utils.cxx)
 
 ADD_EXECUTABLE(HighNuFitter ${HIGHNU_SRC})
