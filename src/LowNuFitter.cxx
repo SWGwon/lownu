@@ -85,9 +85,7 @@ bool ParseArgs(int argc, char* argv[]) {
         }
     }
 
-    if (numPars != 0 
-            && !inputFluxSystematic.empty() 
-            && !inputData.empty()) 
+    if (numPars != 0 && !inputFluxSystematic.empty() && !inputData.empty()) 
         status = true;
 
     if (!status) PrintSyntax();
@@ -98,9 +96,9 @@ void PrintSyntax() {
     std::cout << "./LowNuFitter\n";
     std::cout << "  -s, --flux-shift ${flux systematic file} (REQUIRED)\n";
     std::cout << "  -d, --data-file  ${data sample file}     (REQUIRED)\n";
-    std::cout << "  -n ${number of systematic} (REQUIRED)\n";
+    std::cout << "  -n ${number of systematic}               (REQUIRED)\n";
     std::cout << "    : number of flux systematic to use\n";
-    std::cout << "  -e ${number of systematic} (OPTIONAL)\n";
+    std::cout << "  -e ${error}                              (OPTIONAL)\n";
     std::cout << "    : error for lownu cross section, if not set use 0\n";
     std::cout << "  -h, --help\n";
     std::cout << "    : show this message\n";
