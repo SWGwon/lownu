@@ -6,7 +6,7 @@ bool TOY = false;
 double TOYCORR = 0;
 
 /////////////////////////////prepare histogram//////////////////////////////////
-void FCN::SetHistGenieNominal() {
+void HighNuFCN::SetHistGenieNominal() {
     TH1D* tempHistNominal = new TH1D("HistGenieNominal", 
             "HistGenieNominal;reco #nu;Normalized fraction", 
             this->mNBins, 0, this->mNBins * this->mBinStep);
@@ -50,7 +50,7 @@ void FCN::SetHistGenieNominal() {
     delete tempFile;
 }
 //------------------------------------------------------------------------------
-void FCN::SetHistGenieShift() {
+void HighNuFCN::SetHistGenieShift() {
     std::cout << __func__ << std::endl;
     TH1D* tempHistShift = new TH1D("HistGenieShift", 
             "HistGenieShift;reco #nu;Normalized fraction", 
@@ -84,7 +84,7 @@ void FCN::SetHistGenieShift() {
     delete tempFile;
 }
 //------------------------------------------------------------------------------
-void FCN::SetHistGenieNominalError() {
+void HighNuFCN::SetHistGenieNominalError() {
 
     SetHistGenieNominal();
     SetHistGenieShift();
@@ -104,7 +104,7 @@ void FCN::SetHistGenieNominalError() {
 
 }
 //------------------------------------------------------------------------------
-void FCN::SetHistG4Nominal() {
+void HighNuFCN::SetHistG4Nominal() {
     TH1D* tempHistNominal = new TH1D("HistG4Nominal", 
             "HistG4Nominal;reco #nu;Normalized fraction", 
             this->mNBins, 0, this->mNBins * this->mBinStep);
@@ -136,7 +136,7 @@ void FCN::SetHistG4Nominal() {
     delete tempFile;
 }
 //------------------------------------------------------------------------------
-void FCN::SetHistG4Shift() {
+void HighNuFCN::SetHistG4Shift() {
     TH1D* tempHistShift = new TH1D("HistG4Shift", 
             "HistG4Shift;reco #nu;Normalized fraction", 
             this->mNBins, 0, this->mNBins * this->mBinStep);
@@ -170,7 +170,7 @@ void FCN::SetHistG4Shift() {
     delete tempFile;
 }
 //------------------------------------------------------------------------------
-void FCN::SetHistG4NominalError() {
+void HighNuFCN::SetHistG4NominalError() {
 
     SetHistG4Nominal();
     SetHistG4Shift();
@@ -190,7 +190,7 @@ void FCN::SetHistG4NominalError() {
 
 }
 //------------------------------------------------------------------------------
-void FCN::SetHistCombinedError() {
+void HighNuFCN::SetHistCombinedError() {
     this->mHistCombinedNominal = new TH1D("combinedNominal", 
             "combinedNominal;reco #nu;Normalized fraction", 
             this->mNBins, 0, this->mNBins * this->mBinStep);
@@ -211,7 +211,7 @@ void FCN::SetHistCombinedError() {
 }
 //------------------------------------------------------------------------------
 ////////////////////////////////sampling histogram//////////////////////////////
-TH1D FCN::SamplingEachHistogram() {
+TH1D HighNuFCN::SamplingEachHistogram() {
     TH1D tempSample("","tempSample", this->mNBins, 0, 
                     this->mBinStep * this->mNBins);
 
@@ -230,7 +230,7 @@ TH1D FCN::SamplingEachHistogram() {
     return tempSample;
 }
 //------------------------------------------------------------------------------
-void FCN::SamplingHistograms(int inSamplingNumber) {
+void HighNuFCN::SamplingHistograms(int inSamplingNumber) {
     std::clock_t START = std::clock();
     std::cout << __func__;
     std::cout << ", inSamplingNumber: " << inSamplingNumber << std::endl;
@@ -269,7 +269,7 @@ void FCN::SamplingHistograms(int inSamplingNumber) {
     std::cout << this->mSampledHist.size()  << std::endl;
 }
 //------------------------------------------------------------------------------
-void FCN::SaveHist(std::string_view name) {
+void HighNuFCN::SaveHist(std::string_view name) {
     std::cout << __func__ << std::endl;
     TCanvas can;
     can.Divide(2,2);
@@ -285,7 +285,7 @@ void FCN::SaveHist(std::string_view name) {
 }
 //------------------------------------------------------------------------------
 ///////////////////////////////prepare matries//////////////////////////////////
-void FCN::SetCorrelationMatrix() {
+void HighNuFCN::SetCorrelationMatrix() {
     std::cout << __func__ << std::endl;
     TMatrixD* tempCorMat = new TMatrixD(this->mNBins, this->mNBins);
 
@@ -323,7 +323,7 @@ void FCN::SetCorrelationMatrix() {
 
 }
 //------------------------------------------------------------------------------
-void FCN::SetToyCorrelationMatrix() {
+void HighNuFCN::SetToyCorrelationMatrix() {
     TMatrixD* tempCorMat = new TMatrixD(this->mNBins, this->mNBins);
 
     for (int i = 0; i < this->mNBins; ++i) {
@@ -340,7 +340,7 @@ void FCN::SetToyCorrelationMatrix() {
     this->mToyCorrelationMatrix = tempCorMat;
 }
 //------------------------------------------------------------------------------
-void FCN::SetCovarianceMatrix() {
+void HighNuFCN::SetCovarianceMatrix() {
     std::cout << __func__ << std::endl;
     TMatrixD* tempCovMat = new TMatrixD(this->mNBins, this->mNBins);
     TMatrixD parError(this->mNBins, this->mNBins);
@@ -361,7 +361,7 @@ void FCN::SetCovarianceMatrix() {
     this->mCovarianceMatrix = tempCovMat;
 }
 //------------------------------------------------------------------------------
-void FCN::SetToyCovarianceMatrix() {
+void HighNuFCN::SetToyCovarianceMatrix() {
     TMatrixD* tempCovMat = new TMatrixD(this->mNBins, this->mNBins);
     TMatrixD parError(this->mNBins, this->mNBins);
     for (int i = 0; i < this->mNBins; ++i) {
@@ -382,7 +382,7 @@ void FCN::SetToyCovarianceMatrix() {
 }
 //------------------------------------------------------------------------------
 /////////////////////////////////////chi2///////////////////////////////////////
-double FCN::PredictionAndData() const {
+double HighNuFCN::PredictionAndData() const {
     TH1D n1NuPrediction("","1n high nu prediction", 
             this->mNBins, 0, this->mBinStep * this->mNBins);
 
@@ -411,7 +411,7 @@ double FCN::PredictionAndData() const {
     return mulVec * difference;
 }
 //------------------------------------------------------------------------------
-double FCN::PenaltyForParameters() const {
+double HighNuFCN::PenaltyForParameters() const {
     TVectorD pars(this->mNBins);
     for (int i = 0; i < this->mNBins; ++i) {
         pars[i] = ((RooRealVar*)this->_pulls->at(i))->getValV() - 1;
@@ -423,7 +423,7 @@ double FCN::PenaltyForParameters() const {
     return mulVec2 * pars;
 }
 //------------------------------------------------------------------------------
-double FCN::PenaltyForParametersToyModel() const {
+double HighNuFCN::PenaltyForParametersToyModel() const {
     TVectorD pars(this->mNBins);
     for (int i = 0; i < this->mNBins; ++i) {
         pars[i] = ((RooRealVar*)this->_pulls->at(i))->getValV() - 1;
@@ -435,7 +435,7 @@ double FCN::PenaltyForParametersToyModel() const {
     return mulVec2 * pars;
 }
 //------------------------------------------------------------------------------
-Double_t FCN::evaluate() const {
+Double_t HighNuFCN::evaluate() const {
     double chi2;
     chi2 += this->PredictionAndData();
 

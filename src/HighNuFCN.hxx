@@ -19,11 +19,11 @@
 extern bool TOY;
 extern double TOYCORR;
 
-class FCN : public RooAbsReal
+class HighNuFCN : public RooAbsReal
 {
     public:
-        FCN() : mNBins(0), mBinStep(0) {};
-        FCN(const int inNBin, const int inBinStep) 
+        HighNuFCN() : mNBins(0), mBinStep(0) {};
+        HighNuFCN(const int inNBin, const int inBinStep) 
             : mNBins(inNBin), mBinStep(inBinStep) {
             _pulls = new RooListProxy("_pulls","_pulls",this);
             RooRealVar* Par[this->mNBins];
@@ -48,12 +48,12 @@ class FCN : public RooAbsReal
         }
 
         virtual TObject* clone(const char* newname = 0) const {
-            return new FCN();
+            return new HighNuFCN();
         }
 
         virtual Double_t evaluate() const;
 
-        ~FCN() {
+        ~HighNuFCN() {
             delete mHistGenieNominal; 
             delete mHistGenieShift;
             delete mHistG4Nominal;

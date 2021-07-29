@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
     gStyle->SetOptStat(0);
     gStyle->SetPaintTextFormat("2.3f");
 
-    FCN fcn(nBins, binStep);
+    HighNuFCN fcn(nBins, binStep);
     RooMinuit m(fcn);
     m.setStrategy(2);
     RooFitResult* result = m.fit("s");
