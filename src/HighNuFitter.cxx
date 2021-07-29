@@ -1,4 +1,4 @@
-#include <unistd.h>
+#include <getopt.h>
 #include "HighNuFCN.hxx"
 #include "TLegend.h"
 
@@ -52,12 +52,21 @@ int main(int argc, char* argv[])
 //------------------------------------------------------------------------------
 bool ParseArgs(int argc, char* argv[]) {
     bool status = false;
-    const char* optstring = "b:s:t";
-    char option;
 
-    optind = 1;
-    while (-1 != (option = getopt(argc, argv, optstring))) {
-        switch (option) {
+    int index;
+    int iarg = 0;
+    const struct option longopts[] =
+    {
+        {"num-bin", required_argument, 0, 'b'},
+        {"bin-step",  required_argument, 0, 's'},
+        {"toy",       no_argument,       0, 't'},
+        {"help",       no_argument,       0, 'h'},
+        {0,0,0,0},
+    };
+
+    while (iarg != -1) {
+        iarg = getopt_long(argc, argv, "b:s:th", longopts, &index);
+        switch (iarg) {
             case 'b' : 
                 {
                     nBins = std::stoi(optarg);
@@ -91,11 +100,11 @@ bool ParseArgs(int argc, char* argv[]) {
 //------------------------------------------------------------------------------
 void PrintSyntax() {
     std::cout << "./HighNuFitter\n";
-    std::cout << "  -b ${number of bin} (REQUIRED)\n";
-    std::cout << "  -s ${bin step size} (REQUIRED)\n";
-    std::cout << "  -t                  (OPTIONAL)\n";
+    std::cout << "  -b, --num-bin ${number of bin}  (REQUIRED)\n";
+    std::cout << "  -s, --bin-step ${bin step size} (REQUIRED)\n";
+    std::cout << "  -t, --toy                       (OPTIONAL)\n";
     std::cout << "    : use toy model\n";
-    std::cout << "  -h\n";
+    std::cout << "  -h, --help\n";
     std::cout << "    : show this message\n";
     std::cout << std::endl;
 }

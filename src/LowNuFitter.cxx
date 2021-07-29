@@ -1,4 +1,4 @@
-#include <unistd.h>
+#include <getopt.h>
 #include "TCanvas.h"
 
 #include "LowNuFCN.hxx"
@@ -36,14 +36,24 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+//------------------------------------------------------------------------------
 bool ParseArgs(int argc, char* argv[]) {
     bool status = false;
-    const char* optstring = "s:d:n:e:h";
-    char option;
 
-    optind = 1;
-    while (-1 != (option = getopt(argc, argv, optstring))) {
-        switch (option) {
+    int index;
+    int iarg = 0;
+
+    const struct option longopts[] =
+    {
+        {"flux-shift", required_argument, 0, 's'},
+        {"data-file",  required_argument, 0, 'd'},
+        {"help",       no_argument,       0, 'h'},
+        {0,0,0,0},
+    };
+
+    while (iarg != -1) {
+        iarg = getopt_long(argc, argv, "s:d:n:e:h", longopts, &index);
+        switch (iarg) {
             case 's' : 
                 {
                     inputFluxSystematic = optarg;
@@ -86,13 +96,13 @@ bool ParseArgs(int argc, char* argv[]) {
 //------------------------------------------------------------------------------
 void PrintSyntax() {
     std::cout << "./LowNuFitter\n";
-    std::cout << "  -s ${flux systematic file} (REQUIRED)\n";
-    std::cout << "  -d ${data sample file}     (REQUIRED)\n";
+    std::cout << "  -s, --flux-shift ${flux systematic file} (REQUIRED)\n";
+    std::cout << "  -d, --data-file  ${data sample file}     (REQUIRED)\n";
     std::cout << "  -n ${number of systematic} (REQUIRED)\n";
     std::cout << "    : number of flux systematic to use\n";
     std::cout << "  -e ${number of systematic} (OPTIONAL)\n";
     std::cout << "    : error for lownu cross section, if not set use 0\n";
-    std::cout << "  -h\n";
+    std::cout << "  -h, --help\n";
     std::cout << "    : show this message\n";
     std::cout << std::endl;
 }
