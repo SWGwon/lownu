@@ -21,7 +21,7 @@ LowNuFCN::LowNuFCN(
     //Par[this->GetNumberOfParameters()+ 4~20] : each energy bin
     
     RooRealVar* par[this->GetNumberOfParameters()];
-    for (int i = 0; i < this->GetNumberOfParameters(); i++) {
+    for (int i = 0; i < this->GetNumberOfParameters(); ++i) {
         par[i] = new RooRealVar(Form("flux systematic %d", i), 
                 Form("par%d", i+1), 0);
         par[i]->setConstant(false);
@@ -47,7 +47,7 @@ void LowNuFCN::LoadFluxSystematics(std::string fluxSystematicFile) {
     if (!fileFluxShifts->IsOpen())
         throw std::runtime_error("invalid inputFluxSystematic");
 
-    for (int i = 0; i < this->GetNumberOfParameters(); i++) {
+    for (int i = 0; i < this->GetNumberOfParameters(); ++i) {
         TH1D* temp = (TH1D*)fileFluxShifts.get()->Get(
                 Form("syst%d/ND_numubar_RHC",i));
         this->mFluxSyst.push_back(*temp);
@@ -138,12 +138,9 @@ double LowNuFCN::GetWeight(int inBin) const {
 //-----------------------------------------------------------------------------
 Double_t LowNuFCN::FillEv(RooListProxy* _pulls) const {
     TH1D tempPred = this->GetPrediction(_pulls);
-
     TVectorD* difference = new TVectorD(this->mBins);
 
-    //data - prediciton
-    //kSacling : anti neutrino CC 0pi event for 3DST per year, CDR
-    for (Int_t i = 0; i < this->mBins; i++) { 
+    for (int i = 0; i < this->mBins; ++i) { 
         (*difference)[i] =  tempPred.GetBinContent(i+1) - this->mData.GetBinContent(i+1);
         //std::cout << "P - D[" << i << "]: " <<(*difference)[i] << std::endl;
     }
@@ -165,13 +162,13 @@ TMatrixD* LowNuFCN::PrepareCovMatrix() const {
 
     //only fill diagonal element
     //(i, i) = statistic
-    for(Int_t i = 0; i < this->mBins ; i++) {
+    for(int i = 0; i < this->mBins ; ++i) {
         (*outMat)(i, i) = this->mData.GetBinContent(i+1);
         if((*outMat)(i, i) == 0) 
             (*outMat)(i, i) += 0.0000000001;
     }
-    for(Int_t i = 0; i < this->mBins ; i++) {
-        for(Int_t j = 0; j < this->mBins ; j++) {
+    for(int i = 0; i < this->mBins ; ++i) {
+        for(int j = 0; j < this->mBins ; j++) {
             if (i == j) {
                 continue;
             }
@@ -186,15 +183,15 @@ Double_t LowNuFCN::FillEv2(RooListProxy* _pulls) const {
     TVectorD* centralValue = new TVectorD(this->mBins);
     TVectorD* difference = new TVectorD(this->mBins);
 
-    for (Int_t i = 0; i < this->mBins; i++) {	 
+    for (int i = 0; i < this->mBins; ++i) {	 
         (*e_i)[i] = ((RooAbsReal*)_pulls->at(this->GetNumberOfParameters()+2+i+1))->getVal();
     }
-    for (Int_t i = 0; i < this->mBins; i++) {
+    for (int i = 0; i < this->mBins; ++i) {
         (*centralValue)[i] = 0;
     }
 
     //e_i - centralValue
-    for (Int_t i = 0; i < this->mBins; i++) { 
+    for (int i = 0; i < this->mBins; ++i) { 
         (*difference)[i] = (*e_i)[i] - (*centralValue)[i];
     }
 
@@ -217,12 +214,12 @@ TMatrixD* LowNuFCN::PrepareCovMatrix2() const {
     //only fill diagonal element
     //(i, i) = cross section uncertainty^2
     //{
-    for(Int_t i = 0; i < this->mBins ; i++) {
+    for(int i = 0; i < this->mBins ; ++i) {
         (*outMat)(i, i) = std::pow(mError, 2);// + std::pow(detectorSmeartingHighNu, 2);
     }
     //off diagonal : correlation
-    for(Int_t i = 0; i < this->mBins ; i++) {
-        for(Int_t j = 0; j < this->mBins ; j++) {
+    for(int i = 0; i < this->mBins ; ++i) {
+        for(int j = 0; j < this->mBins ; j++) {
             if (i == j) {
                 continue;
             }
@@ -237,7 +234,7 @@ TMatrixD* LowNuFCN::PrepareCovMatrix2() const {
 Double_t LowNuFCN::ExtraPull(RooListProxy* _pulls) const {
     Double_t pullAdd = 0;
 
-    for(Int_t i = 0; i < this->GetNumberOfParameters(); i++) {
+    for(int i = 0; i < this->GetNumberOfParameters(); ++i) {
         pullAdd += std::pow(((RooAbsReal*)_pulls->at(i))->getVal() - 0, 2)/std::pow(1., 2) ;
         //pullAdd += std::pow(((RooAbsReal*)_pulls->at(i))->getVal() - (*pullCV)[i], 2)/TMath::Power((*pullUnc)[i], 2) ;
     }
