@@ -16,12 +16,12 @@ int main(int argc, char* argv[])
 
     LowNuFCN fcn(numPars, inputError, inputFluxSystematic, inputData);
 
-    TH1D beforeFit = fcn.GetPrediction(fcn.GetPull());
+    TH1D beforeFit = fcn.GetPrediction();
     RooMinuit m(fcn);
     m.setStrategy(2);
     RooFitResult* result = m.fit("s");
 
-    TH1D afterFit = fcn.GetPrediction(fcn.GetPull());
+    TH1D afterFit = fcn.GetPrediction();
     TH1D data = fcn.GetData();
 
     TCanvas c;

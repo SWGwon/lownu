@@ -23,29 +23,7 @@ class HighNuFCN : public RooAbsReal
 {
     public:
         HighNuFCN() : mNBins(0), mBinStep(0) {};
-        HighNuFCN(const int inNBin, const int inBinStep) 
-            : mNBins(inNBin), mBinStep(inBinStep) {
-            _pulls = new RooListProxy("_pulls","_pulls",this);
-            RooRealVar* Par[this->mNBins];
-            for (int i = 0; i < this->mNBins; i++) {
-                Par[i] = new RooRealVar(Form("par%d", i), 
-                                        Form("par%d", i+1), 
-                                        1);
-                Par[i]->setConstant(false);
-                _parlist.add(*(Par[i]));
-            }
-            _pulls->add(_parlist);
-            this->addServerList(*_pulls);
-
-            this->SetHistGenieNominalError();
-            this->SetHistG4NominalError();
-            this->SetHistCombinedError();
-            this->SamplingHistograms(5000);
-            this->SetCorrelationMatrix();
-            this->SetCovarianceMatrix();
-            this->SetToyCorrelationMatrix();
-            this->SetToyCovarianceMatrix();
-        }
+        HighNuFCN(const int inNBin, const int inBinStep);
 
         virtual TObject* clone(const char* newname = 0) const {
             return new HighNuFCN();
@@ -53,38 +31,21 @@ class HighNuFCN : public RooAbsReal
 
         virtual Double_t evaluate() const;
 
-        ~HighNuFCN() {
-            delete mHistGenieNominal; 
-            delete mHistGenieShift;
-            delete mHistG4Nominal;
-            delete mHistG4Shift; 
-            delete mHistCombinedNominal; 
-            delete mSampleResult; 
-            delete mCorrelationMatrix; 
-            delete mToyCorrelationMatrix; 
-            delete mCovarianceMatrix; 
-            delete mToyCovarianceMatrix; 
-            delete mN1Data;
-            delete mN2Data;
-            delete mN3Data;
-        }
+        std::unique_ptr<RooListProxy> mPulls;
 
-        RooArgList _parlist;
-        RooListProxy* _pulls;
+        TH1D* GetHistCombinedNominal() {return this->mHistCombinedNominal.get();};
 
-        TH1D* GetHistCombinedNominal() {return this->mHistCombinedNominal;};
+        TH1D* GetHistGenieNominal() {return this->mHistGenieNominal.get();};
+        TH1D* GetHistGenieShift() {return this->mHistGenieShift.get();};
+        TH1D* GetHistG4Nominal() {return this->mHistG4Nominal.get();};
+        TH1D* GetHistG4Shift() {return this->mHistG4Shift.get();};
+        TH1D* GetHistSampleResult() {return this->mSampleResult.get();};
 
-        TH1D* GetHistGenieNominal() {return this->mHistGenieNominal;};
-        TH1D* GetHistGenieShift() {return this->mHistGenieShift;};
-        TH1D* GetHistG4Nominal() {return this->mHistG4Nominal;};
-        TH1D* GetHistG4Shift() {return this->mHistG4Shift;};
-        TH1D* GetHistSampleResult() {return this->mSampleResult;};
+        TMatrixD* GetCorrelationMatrix() {return this->mCorrelationMatrix.get();};
+        TMatrixD* GetToyCorrelationMatrix() {return this->mToyCorrelationMatrix.get();};
 
-        TMatrixD* GetCorrelationMatrix() {return this->mCorrelationMatrix;};
-        TMatrixD* GetToyCorrelationMatrix() {return this->mToyCorrelationMatrix;};
-
-        TMatrixD* GetCovarianceMatrix() {return this->mCovarianceMatrix;};
-        TMatrixD* GetToyCovarianceMatrix() {return this->mToyCovarianceMatrix;};
+        TMatrixD* GetCovarianceMatrix() {return this->mCovarianceMatrix.get();};
+        TMatrixD* GetToyCovarianceMatrix() {return this->mToyCovarianceMatrix.get();};
 
         void SaveHist(std::string_view name);
 
@@ -92,48 +53,49 @@ class HighNuFCN : public RooAbsReal
         const int mNBins;
         const int mBinStep;
 
-        TH1D* mHistGenieNominal = nullptr;
-        void SetHistGenieNominal();
+        std::vector<RooRealVar*> mParVec;
+        std::unique_ptr<TH1D> mHistGenieNominal;
+        void SetHistGenieNominal(std::string inputFile);
 
-        TH1D* mHistGenieShift = nullptr;
-        void SetHistGenieShift();
+        std::unique_ptr<TH1D> mHistGenieShift;
+        void SetHistGenieShift(std::string inputFile);
         void SetHistGenieNominalError();
 
-        TH1D* mHistG4Nominal = nullptr;
-        void SetHistG4Nominal();
+        std::unique_ptr<TH1D> mHistG4Nominal;
+        void SetHistG4Nominal(std::string inputFile);
 
-        TH1D* mHistG4Shift = nullptr;
-        void SetHistG4Shift();
+        std::unique_ptr<TH1D> mHistG4Shift;
+        void SetHistG4Shift(std::string inputFile);
         void SetHistG4NominalError();
 
-        TH1D* mHistCombinedNominal = nullptr;
+        std::unique_ptr<TH1D> mHistCombinedNominal;
         void SetHistCombinedError();
 
-        TH1D* mSampleResult = nullptr;
+        std::unique_ptr<TH1D> mSampleResult;
         void SamplingHistograms(int inSamplingNumber);
 
         std::vector<TH1D> mSampledHist = {};
         TH1D SamplingEachHistogram();
 
-        TMatrixD* mCorrelationMatrix = nullptr;
+        std::unique_ptr<TMatrixD> mCorrelationMatrix;
         void SetCorrelationMatrix();
 
-        TMatrixD* mToyCorrelationMatrix = nullptr;
+        std::unique_ptr<TMatrixD> mToyCorrelationMatrix;
         void SetToyCorrelationMatrix();
 
-        TMatrixD* mCovarianceMatrix = nullptr;
+        std::unique_ptr<TMatrixD> mCovarianceMatrix;
         void SetCovarianceMatrix();
 
-        TMatrixD* mToyCovarianceMatrix = nullptr;
+        std::unique_ptr<TMatrixD> mToyCovarianceMatrix;
         void SetToyCovarianceMatrix();
 
         double PredictionAndData() const ;
         double PenaltyForParameters() const;
         double PenaltyForParametersToyModel() const;
 
-        TH1D* mN1Data = nullptr;
-        TH1D* mN2Data = nullptr;
-        TH1D* mN3Data = nullptr;
+        std::unique_ptr<TH1D> mN1Data;
+        std::unique_ptr<TH1D> mN2Data;
+        std::unique_ptr<TH1D> mN3Data;
 };
 
 #endif

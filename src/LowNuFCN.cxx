@@ -2,7 +2,8 @@
 
 #include "TCanvas.h"
 
-float kScaling = 2.4E+6 * 0.25; //1year
+double bkgWeight = 1;
+float kScaling = 2.4E+6 * 0.12; //1year
 const float kCorelation = 0.0;
 //-----------------------------------------------------------------------------
 LowNuFCN::LowNuFCN(
@@ -12,32 +13,28 @@ LowNuFCN::LowNuFCN(
     , mError(inError)
     , mFluxSystematicFileName(inputFluxSystematic) 
     , mDataFileName(inputDataFile) {
-    _pulls = new RooListProxy("_pulls", "_pulls", this);
-    
-    //Par[this->GetNumberOfParameters()+1] is for bkg
-    //E' = a + b*E_reco
-    //Par[this->GetNumberOfParameters()+2] : a
-    //Par[this->GetNumberOfParameters()+3] : b
-    //Par[this->GetNumberOfParameters()+ 4~20] : each energy bin
-    
-    RooRealVar* par[this->GetNumberOfParameters()];
+    mPulls = std::make_unique<RooListProxy>("mPulls", "mPulls", this);
     for (int i = 0; i < this->GetNumberOfParameters(); ++i) {
-        par[i] = new RooRealVar(Form("flux systematic %d", i), 
+        RooRealVar* tempPar = new RooRealVar(Form("flux systematic %d", i+1), 
                 Form("par%d", i+1), 0);
-        par[i]->setConstant(false);
-        _parlist.add(*(par[i]));
+        tempPar->setConstant(false);
+        //auto tempPar = std::make_unique<RooRealVar>(Form("flux systematic %d", i), 
+                //Form("par%d", i+1), 0);
+        mFluxPars.push_back(tempPar);
+        mPulls->add(*tempPar);
     }
 
-    RooRealVar* parBkg = new RooRealVar("background", 
-            Form("par%d", this->GetNumberOfParameters()+1), 0);
+    mPullsbkg = std::make_unique<RooListProxy>("mPullsbkg", "mPullsbkg", this);
+    RooRealVar* parBkg = new RooRealVar("background", "background", 0);
     parBkg->setConstant(false);
-    _parlist.add(*(parBkg));
+    mPullsbkg->add(*parBkg);
 
-    _pulls->add(_parlist);
-    this->addServerList(*_pulls);
+    this->addServerList(*mPulls);
+    this->addServerList(*mPullsbkg);
     
     this->LoadFluxSystematics(this->mFluxSystematicFileName);
     this->LoadData(this->mDataFileName);
+    this->SetCovMatrix();
     this->SetPullCV();
     this->SetPullUnc();
 }
@@ -55,7 +52,7 @@ void LowNuFCN::LoadFluxSystematics(std::string fluxSystematicFile) {
 }
 //-----------------------------------------------------------------------------
 void LowNuFCN::LoadData(std::string dataFileName) {
-    dataFile = new TFile(dataFileName.c_str());
+    dataFile = std::make_unique<TFile>(dataFileName.c_str());
     if (!dataFile->IsOpen()) 
         throw std::runtime_error("invalid input data");
     std::cout << dataFileName << std::endl;
@@ -78,7 +75,8 @@ void LowNuFCN::FillData() {
     TH1D tempData("data", "data", numBins, minimum, maximum);
     for (int event = 0; event < this->inputTree->GetEntries(); event++) {
         this->inputTree->GetEntry(event);
-        tempData.Fill(recoNeutrinoE/1000.);
+        if (isSignal) tempData.Fill(recoNeutrinoE/1000.);
+        else tempData.Fill(recoNeutrinoE/1000., bkgWeight);
         Event tempEvent;
         tempEvent.recoNeutrinoE = recoNeutrinoE;
         tempEvent.trueNeutrinoE = trueNeutrinoE;
@@ -89,20 +87,20 @@ void LowNuFCN::FillData() {
 }
 //-----------------------------------------------------------------------------
 void LowNuFCN::SetPullCV() {
-    this->pullCV = new TVectorD(this->GetNumberOfParameters());
+    this->pullCV = std::make_unique<TVectorD>(this->GetNumberOfParameters());
     for(int i = 0; i < this->GetNumberOfParameters(); ++i) {
         (*this->pullCV)[i] = 0;
     }
 }
 //-----------------------------------------------------------------------------
 void LowNuFCN::SetPullUnc() {
-    this->pullUnc = new TVectorD(this->GetNumberOfParameters());
+    this->pullUnc = std::make_unique<TVectorD>(this->GetNumberOfParameters());
     for(int i = 0; i < this->GetNumberOfParameters(); ++i) {
         (*this->pullUnc)[i] = 1;
     }
 }
 //-----------------------------------------------------------------------------
-TH1D LowNuFCN::GetPrediction(RooListProxy* _pulls) const {
+TH1D LowNuFCN::GetPrediction() const {
     //using the same number of bins, flux systematic
     int numBins = this->mFluxSyst[0].GetNbinsX();
     double minimum = this->mFluxSyst[0].GetBinLowEdge(1);
@@ -117,7 +115,7 @@ TH1D LowNuFCN::GetPrediction(RooListProxy* _pulls) const {
         if (event.isSignal) {
             predNuE.Fill(event.recoNeutrinoE/1000., weight);
         } else if (!event.isSignal) {
-            predNuE.Fill(event.recoNeutrinoE/1000., (1 + ((RooAbsReal*)_pulls->at(this->GetNumberOfParameters()))->getVal()));
+            predNuE.Fill(event.recoNeutrinoE/1000., bkgWeight * (1 + ((RooRealVar*)mPullsbkg->at(0))->getVal()));
         }
     }
 
@@ -128,7 +126,7 @@ double LowNuFCN::GetWeight(int inBin) const {
     double weight = 1;
     for (int tempPar = 0; tempPar < this->GetNumberOfParameters(); 
             ++tempPar) {
-        double tempParV = ((RooAbsReal*)_pulls->at(tempPar))->getVal();
+        double tempParV = mFluxPars.at(tempPar)->getVal();
         //std::cout << "par[" << tempPar << "]: " << tempParV << std::endl;
         double tempBinV = this->mFluxSyst[tempPar].GetBinContent(inBin);
         weight *= 1 + tempParV * tempBinV;
@@ -136,55 +134,49 @@ double LowNuFCN::GetWeight(int inBin) const {
     return weight;
 }
 //-----------------------------------------------------------------------------
-Double_t LowNuFCN::FillEv(RooListProxy* _pulls) const {
-    TH1D tempPred = this->GetPrediction(_pulls);
-    TVectorD* difference = new TVectorD(this->mBins);
+//data - prediction
+//kSacling : anti neutrino CC 0pi event for 3DST per year, CDR
+Double_t LowNuFCN::FillEv() const {
+    TH1D tempPred = this->GetPrediction();
+    TVectorD difference(this->mBins);
 
     for (int i = 0; i < this->mBins; ++i) { 
-        (*difference)[i] =  tempPred.GetBinContent(i+1) - this->mData.GetBinContent(i+1);
+        difference[i] = tempPred.GetBinContent(i+1) 
+                           - this->mData.GetBinContent(i+1);
         //std::cout << "P - D[" << i << "]: " <<(*difference)[i] << std::endl;
     }
 
-    TMatrixD* covMat = this->PrepareCovMatrix();
-    covMat->Invert();
+    TMatrixD covMat(*this->GetCovMatrix());
+    covMat.Invert();
 
-    TVectorD mulVec(*difference);
-    mulVec *= (*covMat);
+    TVectorD mulVec(difference);
+    mulVec *= covMat;
 
-    Double_t currentResult = mulVec*(*difference);
+    Double_t currentResult = mulVec * difference;
 
     return (Double_t) currentResult; 
 }
 //-----------------------------------------------------------------------------
-TMatrixD* LowNuFCN::PrepareCovMatrix() const {
+void LowNuFCN::SetCovMatrix() {
     //output covariant matrix
-    TMatrixD* outMat = new TMatrixD(this->mBins , this->mBins);
+    this->mCovMat = std::make_unique<TMatrixD>(this->mBins , this->mBins);
 
     //only fill diagonal element
     //(i, i) = statistic
     for(int i = 0; i < this->mBins ; ++i) {
-        (*outMat)(i, i) = this->mData.GetBinContent(i+1);
-        if((*outMat)(i, i) == 0) 
-            (*outMat)(i, i) += 0.0000000001;
+        (*mCovMat)(i, i) = this->mData.GetBinContent(i+1);
+        if((*mCovMat)(i, i) == 0) 
+            (*mCovMat)(i, i) += 0.0000000001;
     }
-    for(int i = 0; i < this->mBins ; ++i) {
-        for(int j = 0; j < this->mBins ; j++) {
-            if (i == j) {
-                continue;
-            }
-        }
-    }
-
-    return outMat ;
 }
 //-----------------------------------------------------------------------------
-Double_t LowNuFCN::FillEv2(RooListProxy* _pulls) const {
+Double_t LowNuFCN::FillEv2() const {
     TVectorD* e_i = new TVectorD(this->mBins);
     TVectorD* centralValue = new TVectorD(this->mBins);
     TVectorD* difference = new TVectorD(this->mBins);
 
     for (int i = 0; i < this->mBins; ++i) {	 
-        (*e_i)[i] = ((RooAbsReal*)_pulls->at(this->GetNumberOfParameters()+2+i+1))->getVal();
+        (*e_i)[i] = ((RooRealVar*)mPulls->at(this->GetNumberOfParameters()+2+i+1))->getVal();
     }
     for (int i = 0; i < this->mBins; ++i) {
         (*centralValue)[i] = 0;
@@ -231,24 +223,25 @@ TMatrixD* LowNuFCN::PrepareCovMatrix2() const {
     return outMat ;
 }
 //-----------------------------------------------------------------------------
-Double_t LowNuFCN::ExtraPull(RooListProxy* _pulls) const {
+Double_t LowNuFCN::ExtraPull() const {
     Double_t pullAdd = 0;
 
     for(int i = 0; i < this->GetNumberOfParameters(); ++i) {
-        pullAdd += std::pow(((RooAbsReal*)_pulls->at(i))->getVal() - 0, 2)/std::pow(1., 2) ;
-        //pullAdd += std::pow(((RooAbsReal*)_pulls->at(i))->getVal() - (*pullCV)[i], 2)/TMath::Power((*pullUnc)[i], 2) ;
+        double parVal = mFluxPars.at(i)->getVal();
+        pullAdd += std::pow(parVal - 0, 2)/std::pow(1., 2) ;
+        //pullAdd += std::pow(parVal - (*pullCV)[i], 2)/TMath::Power((*pullUnc)[i], 2) ;
     }
     //bkg
     double bkgUnc = 1.;
-    pullAdd += std::pow(((RooAbsReal*)_pulls->at(this->GetNumberOfParameters()))->getVal() - 0, 2)/std::pow(bkgUnc, 2);
+    pullAdd += std::pow(((RooRealVar*)mPullsbkg->at(0))->getVal() - 0, 2)/std::pow(bkgUnc, 2);
 
     return pullAdd;
 }
 //-----------------------------------------------------------------------------
 Double_t LowNuFCN::evaluate() const {
-    Double_t matPart = this->FillEv(_pulls);//original FillEv is matPart
-    //Double_t energyPart = this->FillEv2(_pulls);//(e_i - CV)^T * ( ) * (e_i - CV)
-    Double_t extraPull = this->ExtraPull(_pulls);//same variable extraPull
+    Double_t matPart = this->FillEv();//original FillEv is matPart
+    //Double_t energyPart = this->FillEv2();//(e_i - CV)^T * ( ) * (e_i - CV)
+    Double_t extraPull = this->ExtraPull();//same variable extraPull
     //std::cout << "p - d side: " << matPart << std::endl;
     //std::cout << "e - CV side: " << energyPart << std::endl;
     //std::cout << "extraPull: " << extraPull << std::endl;
@@ -258,7 +251,3 @@ Double_t LowNuFCN::evaluate() const {
     return chi2;
 }
 //-----------------------------------------------------------------------------
-LowNuFCN::~LowNuFCN() {
-    delete dataFile;
-    delete _pulls;
-}

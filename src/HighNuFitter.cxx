@@ -27,9 +27,9 @@ int main(int argc, char* argv[])
     TCanvas can;
     can.Divide(2,2);
     can.cd(1);
-    toyCorr->Draw("text colz");
+    //toyCorr->Draw("text colz");
     can.cd(2);
-    toyCov->Draw("text colz");
+    //toyCov->Draw("text colz");
     can.cd(3);
     corr->Draw("text colz");
     can.cd(4);
