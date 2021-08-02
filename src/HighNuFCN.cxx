@@ -30,11 +30,8 @@ HighNuFCN::HighNuFCN(const int inNBin, const int inBinStep)
         this->SetToyCovarianceMatrix();
 }
 //------------------------------------------------------------------------------
-void HighNuFCN::SetHistGenieNominal(std::string inputFile) {
-    mHistGenieNominal = std::make_unique<TH1D>("HistGenieNominal", 
-            "HistGenieNominal;reco #nu;Normalized fraction", 
-            this->mNBins, 0, this->mNBins * this->mBinStep);
-    mN1Data = std::make_unique<TH1D>("HistN1Data", "HistN1Data", 
+std::unique_ptr<TH1D> HighNuFCN::FillHist(std::string inputFile) {
+    std::unique_ptr<TH1D> tempHist = std::make_unique<TH1D>(inputFile.c_str(), inputFile.c_str(), 
             this->mNBins, 0, this->mNBins * this->mBinStep);
 
     TFile tempFile(inputFile.c_str());
@@ -56,40 +53,21 @@ void HighNuFCN::SetHistGenieNominal(std::string inputFile) {
             if (300 < recoNu && recoNu < 550) recoNu = 325;
             if (550 < recoNu && recoNu < 800) recoNu = 375;
         }
-        mHistGenieNominal->Fill(recoNu);
-        //if (numberOfFSNeutron == 1)
-        mN1Data->Fill(recoNu);
+        tempHist->Fill(recoNu);
     }
-    mN1Data->Scale(1/mN1Data->Integral(), "nosw2");
-    mHistGenieNominal->Scale(1/mHistGenieNominal->Integral(), "nosw2");
+    tempHist->Scale(1/tempHist->Integral(), "nosw2");
+
+    return std::move(tempHist);
+}
+//------------------------------------------------------------------------------
+void HighNuFCN::SetHistGenieNominal(std::string inputFile) {
+    std::cout << __func__ << std::endl;
+    mHistGenieNominal = FillHist(inputFile);
 }
 //------------------------------------------------------------------------------
 void HighNuFCN::SetHistGenieShift(std::string inputFile) {
-    mHistGenieShift = std::make_unique<TH1D>("HistGenieShift", 
-            "HistGenieShift;reco #nu;Normalized fraction", 
-            this->mNBins, 0, this->mNBins * this->mBinStep);
-    TFile tempFile(inputFile.c_str());
-    if (!tempFile.IsOpen()) {
-        std::cout << "in " << __func__ << std::endl;
-        std::cout << "invalid input: " << inputFile << std::endl;
-    }
-    TTree* tempTree = (TTree*)tempFile.Get("tree");
-    float recoNu;          tempTree->SetBranchAddress("recoNu", &recoNu);
-    int numberOfFSNeutron; tempTree->SetBranchAddress("numberOfFSNeutron", 
-            &numberOfFSNeutron);
-
     std::cout << __func__ << std::endl;
-    for (int i = 0; i < tempTree->GetEntries(); ++i) {
-        PrintProgress(i, tempTree->GetEntries());
-        tempTree->GetEntry(i);
-        //if (numberOfFSNeutron == 1) continue;
-        if (combinHighNu) {
-            if (300 < recoNu && recoNu < 550) recoNu = 325;
-            if (550 < recoNu && recoNu < 800) recoNu = 375;
-        }
-        mHistGenieShift->Fill(recoNu);
-    }
-    mHistGenieShift->Scale(1/mHistGenieShift->Integral(), "nosw2");
+    mHistGenieShift = FillHist(inputFile);
 }
 //------------------------------------------------------------------------------
 void HighNuFCN::SetHistGenieNominalError() {
@@ -115,61 +93,13 @@ void HighNuFCN::SetHistGenieNominalError() {
 }
 //------------------------------------------------------------------------------
 void HighNuFCN::SetHistG4Nominal(std::string inputFile) {
-    mHistG4Nominal = std::make_unique<TH1D>("HistG4Nominal", 
-            "HistG4Nominal;reco #nu;Normalized fraction", 
-            this->mNBins, 0, this->mNBins * this->mBinStep);
-
-    TFile tempFile(inputFile.c_str());
-    if (!tempFile.IsOpen()) {
-        std::cout << "in " << __func__ << std::endl;
-        std::cout << "invalid input: " << inputFile << std::endl;
-    }
-    TTree* tempTree = (TTree*)tempFile.Get("tree");
-    float recoNu;          tempTree->SetBranchAddress("recoNu", &recoNu);
-    int numberOfFSNeutron; tempTree->SetBranchAddress("numberOfFSNeutron", 
-            &numberOfFSNeutron);
-
     std::cout << __func__ << std::endl;
-    for (int i = 0; i < tempTree->GetEntries(); ++i) {
-        PrintProgress(i, tempTree->GetEntries());
-        tempTree->GetEntry(i);
-        //if (numberOfFSNeutron == 1) continue;
-        if (combinHighNu) {
-            if (300 < recoNu && recoNu < 550) recoNu = 325;
-            if (550 < recoNu && recoNu < 800) recoNu = 375;
-        }
-        mHistG4Nominal->Fill(recoNu);
-    }
-    mHistG4Nominal->Scale(1/mHistG4Nominal->Integral(), "nosw2");
+    mHistG4Nominal = FillHist(inputFile);
 }
 //------------------------------------------------------------------------------
 void HighNuFCN::SetHistG4Shift(std::string inputFile) {
-    mHistG4Shift = std::make_unique<TH1D>("HistG4Shift", 
-            "HistG4Shift;reco #nu;Normalized fraction", 
-            this->mNBins, 0, this->mNBins * this->mBinStep);
-
-    TFile tempFile(inputFile.c_str());
-    if (!tempFile.IsOpen()) {
-        std::cout << "in " << __func__ << std::endl;
-        std::cout << "invalid input: " << inputFile << std::endl;
-    }
-    TTree* tempTree = (TTree*)tempFile.Get("tree");
-    float recoNu;          tempTree->SetBranchAddress("recoNu", &recoNu);
-    int numberOfFSNeutron; tempTree->SetBranchAddress("numberOfFSNeutron", 
-            &numberOfFSNeutron);
-
     std::cout << __func__ << std::endl;
-    for (int i = 0; i < tempTree->GetEntries(); ++i) {
-        PrintProgress(i, tempTree->GetEntries());
-        tempTree->GetEntry(i);
-        //if (numberOfFSNeutron == 1) continue;
-        if (combinHighNu) {
-            if (300 < recoNu && recoNu < 550) recoNu = 325;
-            if (550 < recoNu && recoNu < 800) recoNu = 375;
-        }
-        mHistG4Shift->Fill(recoNu);
-    }
-    mHistG4Shift->Scale(1/mHistG4Shift->Integral(), "nosw2");
+    mHistG4Shift = FillHist(inputFile);
 }
 //------------------------------------------------------------------------------
 void HighNuFCN::SetHistG4NominalError() {
@@ -378,7 +308,7 @@ double HighNuFCN::PredictionAndData() const {
             this->mNBins, 0, this->mBinStep * this->mNBins);
 
     for (int i = 0; i < this->mNBins; ++i) {
-        n1NuPrediction.SetBinContent(i+1, this->mN1Data->GetBinContent(i+1) 
+        n1NuPrediction.SetBinContent(i+1, this->mHistGenieNominal->GetBinContent(i+1) 
                 * mParVec.at(i)->getValV());
     }
 
@@ -387,14 +317,14 @@ double HighNuFCN::PredictionAndData() const {
         if (this->mBinStep * (i + 1) <= 300)
             difference[i] = 0;
         else
-            difference[i] = mN1Data->GetBinContent(i+1) 
+            difference[i] = mHistGenieNominal->GetBinContent(i+1) 
                             - n1NuPrediction.GetBinContent(i+1);
         //std::cout << "difference[" << i << "]: ";
         //std::cout << difference[i] << std::endl;
     }
     TMatrixD stat(this->mNBins, this->mNBins);
     for (int i = 0; i < this->mNBins; ++i) {
-        stat(i, i) = 0.1 * this->mN1Data->GetBinContent(i+1);
+        stat(i, i) = 0.1 * this->mHistGenieNominal->GetBinContent(i+1);
     }
     TVectorD mulVec(difference);
     stat.Invert();

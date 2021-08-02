@@ -53,6 +53,8 @@ class HighNuFCN : public RooAbsReal
         const int mNBins;
         const int mBinStep;
 
+        std::unique_ptr<TH1D> FillHist(std::string inputFile);
+
         std::vector<RooRealVar*> mParVec;
         std::unique_ptr<TH1D> mHistGenieNominal;
         void SetHistGenieNominal(std::string inputFile);
