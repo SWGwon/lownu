@@ -7,6 +7,7 @@ std::string inputFluxSystematic;
 std::string inputData;
 int numPars = 0;
 double inputError = 0;
+std::string fitOpt = "s";
 bool ParseArgs(int argc, char* argv[]);
 void PrintSyntax();
 //------------------------------------------------------------------------------
@@ -18,8 +19,9 @@ int main(int argc, char* argv[])
 
     TH1D beforeFit = fcn.GetPrediction();
     RooMinuit m(fcn);
+    m.setPrintLevel(0);
     m.setStrategy(2);
-    RooFitResult* result = m.fit("s");
+    RooFitResult* result = m.fit(fitOpt.c_str());
 
     TH1D afterFit = fcn.GetPrediction();
     TH1D data = fcn.GetData();
@@ -47,12 +49,13 @@ bool ParseArgs(int argc, char* argv[]) {
     {
         {"flux-shift", required_argument, 0, 's'},
         {"data-file",  required_argument, 0, 'd'},
+        {"fit-opt",    required_argument, 0, 'f'},
         {"help",       no_argument,       0, 'h'},
         {0,0,0,0},
     };
 
     while (iarg != -1) {
-        iarg = getopt_long(argc, argv, "s:d:n:e:h", longopts, &index);
+        iarg = getopt_long(argc, argv, "s:d:n:e:f:h", longopts, &index);
         switch (iarg) {
             case 's' : 
                 {
@@ -75,6 +78,11 @@ bool ParseArgs(int argc, char* argv[]) {
             case 'e' :
                 {
                     inputError = std::stod(optarg);
+                    break;
+                }
+            case 'f' :
+                {
+                    fitOpt = optarg;
                     break;
                 }
             case 'h' :
@@ -100,6 +108,16 @@ void PrintSyntax() {
     std::cout << "    : number of flux systematic to use\n";
     std::cout << "  -e ${error}                              (OPTIONAL)\n";
     std::cout << "    : error for lownu cross section, if not set use 0\n";
+    std::cout << "  -f, --fit-opt ${option}         (OPTIONAL)\n";
+    std::cout << "    : s - Run Hesse first to estimate initial step size\n";
+    std::cout << "      m - Run Migrad only\n";
+    std::cout << "      h - Run Hesse to estimate errors\n";
+    std::cout << "      v - Verbose mode\n";
+    std::cout << "      l - Log parameters after each Minuit steps to file\n";
+    std::cout << "      t - Activate profile timer\n";
+    std::cout << "      r - Save fit result\n";
+    std::cout << "      0 - Run Migrad with strategy 0\n";
+    std::cout << "      default - s\n";
     std::cout << "  -h, --help\n";
     std::cout << "    : show this message\n";
     std::cout << std::endl;
