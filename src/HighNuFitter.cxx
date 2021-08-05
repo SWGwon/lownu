@@ -4,9 +4,10 @@
 
 int nBins;
 int binStep;
+int printLevel = 0;
 bool ParseArgs(int argc, char* argv[]);
 void PrintSyntax();
-std::string fitOpt = "s";
+std::string fitOpt = "";
 //------------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
@@ -17,42 +18,49 @@ int main(int argc, char* argv[])
 
     HighNuFCN fcn(nBins, binStep);
     RooMinuit m(fcn);
-    m.setPrintLevel(0);
+    m.setPrintLevel(printLevel);
     m.setStrategy(2);
-    //m.hesse();
-    //m.migrad();
     RooFitResult* result = m.fit(fitOpt.c_str());
-    //RooFitResult* result = m.migrad();
 
     TMatrixD* toyCorr = fcn.GetToyCorrelationMatrix();
     TMatrixD* toyCov = fcn.GetToyCovarianceMatrix();
-    TMatrixD* corr = fcn.GetCorrelationMatrix();
-    TMatrixD* cov = fcn.GetCovarianceMatrix();
+
+    TH1D* nominal = fcn.GetHistGenieNominal();
+    nominal->Sumw2(false);
+    TH1D* shift = fcn.GetHistGenieShift();
+    shift->Sumw2(false);
+    TH1D* sample = fcn.GetHistSampleResult();
+    TMatrixD corr(*fcn.GetCorrelationMatrix());
+    TMatrixD cov(*fcn.GetCovarianceMatrix());
 
     TCanvas can;
     can.Divide(2,2);
     can.cd(1);
-    //toyCorr->Draw("text colz");
+    nominal->SetLineColor(2);
+    nominal->Draw();
+    shift->Draw("same");
+    can.cd(1)->BuildLegend(0.7,0.7, 0.9,0.9);
     can.cd(2);
-    //toyCov->Draw("text colz");
+    sample->Draw();
     can.cd(3);
-    corr->Draw("text colz");
+    corr.Draw("text colz");
     can.cd(4);
-    cov->Draw("text colz");
+    corr.Invert();
+    corr.Draw("text colz");
     can.SaveAs("asd.pdf");
 
     TCanvas c2;
-    fcn.GetHistGenieShift()->DrawNormalized();
+    fcn.GetHistGenieShift()->Draw();
     fcn.GetHistGenieNominal()->Sumw2(false);
     //fcn.GetHistGenieNominal()->SetLineColor(2);
-    fcn.GetHistGenieNominal()->DrawNormalized("same");
+    fcn.GetHistGenieNominal()->Draw("same");
     TLegend l(0.7,0.7, 0.9,0.9);
     l.AddEntry(fcn.GetHistGenieNominal(), "nominal");
     l.AddEntry(fcn.GetHistGenieShift(), "shift");
     l.Draw();
     c2.SaveAs("slide.pdf");
 
-    fcn.SaveHist("modelHist");
+    //fcn.SaveHist("modelHist");
 }
 //------------------------------------------------------------------------------
 bool ParseArgs(int argc, char* argv[]) {
@@ -66,12 +74,13 @@ bool ParseArgs(int argc, char* argv[]) {
         {"bin-step",  required_argument, 0, 's'},
         {"toy",       no_argument,       0, 't'},
         {"fit-opt",   required_argument, 0, 'f'},
+        {"print-level", required_argument, 0, 'p'},
         {"help",       no_argument,       0, 'h'},
         {0,0,0,0},
     };
 
     while (iarg != -1) {
-        iarg = getopt_long(argc, argv, "b:s:tf:h", longopts, &index);
+        iarg = getopt_long(argc, argv, "b:s:tf:p:h", longopts, &index);
         switch (iarg) {
             case 'b' : 
                 {
@@ -94,6 +103,11 @@ bool ParseArgs(int argc, char* argv[]) {
             case 'f' :
                 {
                     fitOpt = optarg;
+                    break;
+                }
+            case 'p' :
+                {
+                    printLevel = std::stoi(optarg);
                     break;
                 }
             case 'h' :
@@ -124,7 +138,9 @@ void PrintSyntax() {
     std::cout << "      t - Activate profile timer\n";
     std::cout << "      r - Save fit result\n";
     std::cout << "      0 - Run Migrad with strategy 0\n";
-    std::cout << "      default - s\n";
+    std::cout << "      (default) : migrad() + minos()\n";
+    std::cout << "  -p, --print-level ${int}\n";
+    std::cout << "    : None =-1 , Reduced =0 , Normal =1 , ExtraForProblem =2 , Maximum =3 \n";
     std::cout << "  -h, --help\n";
     std::cout << "    : show this message\n";
     std::cout << std::endl;

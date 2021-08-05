@@ -33,21 +33,21 @@ class HighNuFCN : public RooAbsReal
 
         std::unique_ptr<RooListProxy> mPulls;
 
-        TH1D* GetHistCombinedNominal() {return this->mHistCombinedNominal.get();};
+        TH1D* GetHistCombinedNominal() const {return this->mHistCombinedNominal.get();};
 
-        TH1D* GetHistGenieNominal() {return this->mHistGenieNominal.get();};
-        TH1D* GetHistGenieShift() {return this->mHistGenieShift.get();};
-        TH1D* GetHistG4Nominal() {return this->mHistG4Nominal.get();};
-        TH1D* GetHistG4Shift() {return this->mHistG4Shift.get();};
-        TH1D* GetHistSampleResult() {return this->mSampleResult.get();};
+        TH1D* GetHistGenieNominal() const {return this->mHistGenieNominal.get();};
+        TH1D* GetHistGenieShift() const {return this->mHistGenieShift.get();};
+        TH1D* GetHistG4Nominal() const {return this->mHistG4Nominal.get();};
+        TH1D* GetHistG4Shift() const {return this->mHistG4Shift.get();};
+        TH1D* GetHistSampleResult() const {return this->mSampleResult.get();};
 
-        TMatrixD* GetCorrelationMatrix() {return this->mCorrelationMatrix.get();};
-        TMatrixD* GetToyCorrelationMatrix() {return this->mToyCorrelationMatrix.get();};
+        TMatrixD* GetCorrelationMatrix() const {return this->mCorrelationMatrix.get();};
+        TMatrixD* GetToyCorrelationMatrix() const {return this->mToyCorrelationMatrix.get();};
 
-        TMatrixD* GetCovarianceMatrix() {return this->mCovarianceMatrix.get();};
-        TMatrixD* GetToyCovarianceMatrix() {return this->mToyCovarianceMatrix.get();};
+        TMatrixD* GetCovarianceMatrix() const {return this->mCovarianceMatrix.get();};
+        TMatrixD* GetToyCovarianceMatrix() const {return this->mToyCovarianceMatrix.get();};
 
-        void SaveHist(std::string_view name);
+        void SaveHist(std::string_view name) const;
 
     private:
         const int mNBins;
@@ -91,9 +91,14 @@ class HighNuFCN : public RooAbsReal
         std::unique_ptr<TMatrixD> mToyCovarianceMatrix;
         void SetToyCovarianceMatrix();
 
-        double PredictionAndData() const ;
-        double PenaltyForParameters() const;
-        double PenaltyForParametersToyModel() const;
+        std::unique_ptr<TMatrixD> mTestCov;
+        void SetTestCov();
+        double TestChi2() const;
+
+        double PredictionMinusData() const ;
+        double Correlation() const;
+        double ExtraPenaltyForParameters() const;
+        double CorrelationToyModel() const;
 
         std::unique_ptr<TH1D> mN1Data;
         std::unique_ptr<TH1D> mN2Data;
