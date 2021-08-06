@@ -1,6 +1,7 @@
 #include <getopt.h>
 #include "HighNuFCN.hxx"
 #include "TLegend.h"
+#include "TGraph.h"
 
 int nBins;
 int binStep;
@@ -30,6 +31,7 @@ int main(int argc, char* argv[])
     TH1D* shift = fcn.GetHistGenieShift();
     shift->Sumw2(false);
     TH1D* sample = fcn.GetHistSampleResult();
+    //TMatrixD corr(*fcn.GetToyCorrelationMatrix());
     TMatrixD corr(*fcn.GetCorrelationMatrix());
     TMatrixD cov(*fcn.GetCovarianceMatrix());
 
@@ -45,8 +47,8 @@ int main(int argc, char* argv[])
     can.cd(3);
     corr.Draw("text colz");
     can.cd(4);
-    corr.Invert();
-    corr.Draw("text colz");
+    TMatrixD invertCov(corr.Invert());
+    cov.Invert().Draw("text colz");
     can.SaveAs("asd.pdf");
 
     TCanvas c2;
@@ -59,6 +61,19 @@ int main(int argc, char* argv[])
     l.AddEntry(fcn.GetHistGenieShift(), "shift");
     l.Draw();
     c2.SaveAs("slide.pdf");
+
+    const int size = fcn.mParV.size();
+    double x[size];
+    double y[size];
+    for (int i = 0; i < size; ++i) {
+        x[i] = fcn.mParV.at(i);
+        y[i] = fcn.mChi2.at(i);
+    }
+    TGraph gr(size, x, y);
+    TCanvas c3;
+    gr.Draw("A*");
+    c3.SaveAs("chi2_dist.pdf");
+
 
     //fcn.SaveHist("modelHist");
 }

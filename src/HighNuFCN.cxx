@@ -13,7 +13,7 @@ HighNuFCN::HighNuFCN(const int inNBin, const int inBinStep)
         mPulls = std::make_unique<RooListProxy>("mPulls","mPulls",this);
         for (int i = 0; i < this->mNBins; i++) {
             RooRealVar* tempPar = new RooRealVar(Form("par%d", i), 
-                    Form("par%d", i+1), 1);
+                    Form("par%d", i+1), 0);
             tempPar->setConstant(false);
             if (this->mBinStep*(i+1) <= 300)
                 tempPar->setError(1);
@@ -275,23 +275,8 @@ void HighNuFCN::SetCorrelationMatrix() {
     for (int i = 0; i < this->mNBins; ++i) {
         for (int j = 0; j < this->mNBins; ++j) {
             //(*mCorrelationMatrix)(i, j) = std::pow(covMat(i, j), 2) / (covMat(i, i) * covMat(j, j));
-            (*mCorrelationMatrix)(i, j) = tempCorr(i, j) / std::pow(std::abs(tempCorr(i, i) * tempCorr(j, j)), 0.5);
+            (*mCorrelationMatrix)(i, j) = std::abs(tempCorr(i, j) / std::pow(std::abs(tempCorr(i, i) * tempCorr(j, j)), 0.5));
             //(*mCorrelationMatrix)(i, j) = tempCorr(i, j);
-        }
-    }
-}
-//------------------------------------------------------------------------------
-void HighNuFCN::SetToyCorrelationMatrix() {
-    mToyCorrelationMatrix = std::make_unique<TMatrixD>(this->mNBins, this->mNBins);
-
-    for (int i = 0; i < this->mNBins; ++i) {
-        for (int j = 0; j < this->mNBins; ++j) {
-            if (i == j)
-                (*mToyCorrelationMatrix)(i, j) = 1.;
-            else if (i == 0 || j == 0)
-                (*mToyCorrelationMatrix)(i, j) = -TOYCORR;
-            else if (i == 2 || j == 2)
-                (*mToyCorrelationMatrix)(i, j) = TOYCORR;
         }
     }
 }
@@ -309,26 +294,7 @@ void HighNuFCN::SetCovarianceMatrix() {
 
     for (int i = 0; i < this->mNBins; ++i) {
         for (int j = 0; j < this->mNBins; ++j) {
-            (*mCovarianceMatrix)(i, j) = (*this->mCorrelationMatrix)(i,j);
-                //*(parError(i, i) * parError(j, j)); 
-        }
-    }
-}
-//------------------------------------------------------------------------------
-void HighNuFCN::SetToyCovarianceMatrix() {
-    mToyCovarianceMatrix = std::make_unique<TMatrixD>(this->mNBins, this->mNBins);
-    TMatrixD parError(this->mNBins, this->mNBins);
-    for (int i = 0; i < this->mNBins; ++i) {
-        if (this->mBinStep*(i+1) <= 300)
-            parError(i,i) = 1.;
-        else
-            parError(i,i) = 0.1;
-    }
-
-    for (int i = 0; i < this->mNBins; ++i) {
-        for (int j = 0; j < this->mNBins; ++j) {
-            (*mToyCovarianceMatrix)(i, j) = (*this->mToyCorrelationMatrix)(i,j);
-                //* parError(i, i) * parError(j, j)  ; 
+            (*mCovarianceMatrix)(i, j) = (*this->mCorrelationMatrix)(i,j) * (parError(i, i) * parError(j, j)); 
         }
     }
 }
@@ -340,7 +306,7 @@ double HighNuFCN::PredictionMinusData() const {
 
     for (int i = 0; i < this->mNBins; ++i) {
         n1NuPrediction.SetBinContent(i+1, this->mHistGenieNominal->GetBinContent(i+1) 
-                * mParVec.at(i)->getValV());
+                * (1 + mParVec.at(i)->getValV()));
     }
 
     TVectorD difference(this->mNBins);
@@ -372,12 +338,18 @@ double HighNuFCN::PredictionMinusData() const {
 double HighNuFCN::Correlation() const {
     TVectorD pars(this->mNBins);
     for (int i = 0; i < this->mNBins; ++i) {
-        pars[i] = ((RooRealVar*)this->mPulls->at(i))->getValV() - 1;
+        pars[i] = mParVec.at(i)->getValV();
     }
     TMatrixD invertCov(*(this->mCovarianceMatrix));
     TVectorD mulVec2(pars);
     invertCov.Invert();
-    mulVec2 *= invertCov;
+    TMatrixD invertCov2(this->mNBins, this->mNBins);
+    for (int i = 0; i < this->mNBins; ++i) {
+        for (int j = 0; j < this->mNBins; ++j) {
+            invertCov2(i, j) = invertCov(i, j);// / std::pow(std::abs(invertCov(i, i) * invertCov(j, j)), 0.5);
+        }
+    }
+    mulVec2 *= invertCov2;
     return mulVec2 * pars;
 }
 //------------------------------------------------------------------------------
@@ -385,25 +357,95 @@ double HighNuFCN::ExtraPenaltyForParameters() const {
     double a = 0;
     for (int i = 0; i < this->mNBins; ++i) {
         if (this->mBinStep*(i+1) <= 300)
-            a += std::pow(((RooRealVar*)this->mPulls->at(i))->getValV() - 1, 2)/1;
+            a += std::pow(mParVec.at(i)->getValV() - 1, 2)/1;
         else
-            a += std::pow(((RooRealVar*)this->mPulls->at(i))->getValV() - 1, 2)/0.1;
+            a += std::pow(mParVec.at(i)->getValV() - 1, 2)/0.1;
     }
     return a;
 }
 //------------------------------------------------------------------------------
-double HighNuFCN::CorrelationToyModel() const {
-    TVectorD pars(this->mNBins);
-    for (int i = 0; i < this->mNBins; ++i) {
-        pars[i] = ((RooRealVar*)this->mPulls->at(i))->getValV() - 1;
+Double_t HighNuFCN::evaluate() const {
+    double chi2 = 0;
+    chi2 += this->PredictionMinusData();
+
+    if (!TOY) {
+        chi2 += this->Correlation();
+    } else {
+        chi2 += this->CorrelationToyModel();
     }
-    TMatrixD invertToyCov(*(this->mToyCovarianceMatrix));
-    TVectorD mulVec2(pars);
-    invertToyCov.Invert();
-    mulVec2 *= invertToyCov;
-    return mulVec2 * pars;
+
+    //for (int i = 0; i < this->mNBins; ++i) {
+    //    std::cout << "p[" << i << "]: " << mParVec.at(i)->getValV() << std::endl;
+    //}
+    //std::cout << "P-D: " << this->PredictionMinusData() << std::endl;
+    //std::cout << "P-CV: " << this->Correlation() << std::endl;
+    //std::cout << "chi2: " << chi2 << std::endl;
+    
+    //chi2 += this->TestChi2();
+    //chi2 += this->ExtraPenaltyForParameters();
+
+    mParV.push_back(mParVec.at(1)->getValV());
+    mChi2.push_back(chi2);
+
+    return chi2;
 }
 //------------------------------------------------------------------------------
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
+//for test
 void HighNuFCN::SetTestCov() {
     TMatrixD tempCorr(this->mNBins, this->mNBins);
     mTestCov = std::make_unique<TMatrixD>(this->mNBins, this->mNBins);
@@ -478,24 +520,48 @@ double HighNuFCN::TestChi2() const {
     return mulVec * difference;
 }
 //------------------------------------------------------------------------------
-Double_t HighNuFCN::evaluate() const {
-    double chi2 = 0;
-    //chi2 += this->TestChi2();
-    chi2 += this->PredictionMinusData();
-    chi2 += this->Correlation();
-    //chi2 += this->ExtraPenaltyForParameters();
-
-    //if (!TOY) {
-    //    chi2 += this->Correlation();
-    //} else {
-    //    //chi2 += this->CorrelationToyModel();
-    //}
+void HighNuFCN::SetToyCorrelationMatrix() {
+    mToyCorrelationMatrix = std::make_unique<TMatrixD>(this->mNBins, this->mNBins);
 
     for (int i = 0; i < this->mNBins; ++i) {
-        std::cout << "p[" << i << "]: " << ((RooRealVar*)this->mPulls->at(i))->getValV() << std::endl;
+        for (int j = 0; j < this->mNBins; ++j) {
+            if (i == j)
+                (*mToyCorrelationMatrix)(i, j) = 1.;
+            else if (i == 0 || j == 0)
+                (*mToyCorrelationMatrix)(i, j) = TOYCORR;
+            else if (i == 2 || j == 2)
+                (*mToyCorrelationMatrix)(i, j) = TOYCORR;
+        }
     }
-    std::cout << "P-D: " << this->PredictionMinusData() << std::endl;
-    std::cout << "P-CV: " << this->Correlation() << std::endl;
-    std::cout << "chi2: " << chi2 << std::endl;
-    return chi2;
 }
+//------------------------------------------------------------------------------
+double HighNuFCN::CorrelationToyModel() const {
+    TVectorD pars(this->mNBins);
+    for (int i = 0; i < this->mNBins; ++i) {
+        pars[i] = mParVec.at(i)->getValV();
+    }
+    TMatrixD invertToyCov(*(this->mToyCovarianceMatrix));
+    TVectorD mulVec2(pars);
+    invertToyCov.Invert();
+    mulVec2 *= invertToyCov;
+    return mulVec2 * pars;
+}
+//------------------------------------------------------------------------------
+void HighNuFCN::SetToyCovarianceMatrix() {
+    mToyCovarianceMatrix = std::make_unique<TMatrixD>(this->mNBins, this->mNBins);
+    TMatrixD parError(this->mNBins, this->mNBins);
+    for (int i = 0; i < this->mNBins; ++i) {
+        if (this->mBinStep*(i+1) <= 300)
+            parError(i,i) = 1.;
+        else
+            parError(i,i) = 0.1;
+    }
+
+    for (int i = 0; i < this->mNBins; ++i) {
+        for (int j = 0; j < this->mNBins; ++j) {
+            (*mToyCovarianceMatrix)(i, j) = (*this->mToyCorrelationMatrix)(i,j)
+                * parError(i, i) * parError(j, j)  ; 
+        }
+    }
+}
+//------------------------------------------------------------------------------

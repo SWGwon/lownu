@@ -49,6 +49,11 @@ class HighNuFCN : public RooAbsReal
 
         void SaveHist(std::string_view name) const;
 
+        std::vector<RooRealVar*> GetParVec() const {return this->mParVec;};
+
+        mutable std::vector<double> mParV;
+        mutable std::vector<double> mChi2;
+
     private:
         const int mNBins;
         const int mBinStep;
