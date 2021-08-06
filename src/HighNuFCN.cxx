@@ -18,7 +18,7 @@ HighNuFCN::HighNuFCN(const int inNBin, const int inBinStep)
             if (this->mBinStep*(i+1) <= 300)
                 tempPar->setError(1);
             else
-                tempPar->setError(0.1);
+                tempPar->setError(1);
             mParVec.push_back(tempPar);
             mPulls->add(*tempPar);
         }
@@ -260,23 +260,18 @@ void HighNuFCN::SetCorrelationMatrix() {
             double Eij = XX(i, j) / this->mSampledHist.size();
             double Ei = X(i) / this->mSampledHist.size();
             double Ej = X(j) / this->mSampledHist.size();
-            double tempNominator = Eij - Ei * Ej;
-            double tempDenominator = Ei * Ej;
-            //covMat(i, j) = tempNominator / tempDenominator;
             covMat(i, j) = Eij - Ei * Ej;
         }
     }
     for (int i = 0; i < this->mNBins; ++i) {
         for (int j = 0; j < this->mNBins; ++j) {
             tempCorr(i, j) = covMat(i, j) / (fracError.at(i) * fracError.at(j));
-
         }
     }
     for (int i = 0; i < this->mNBins; ++i) {
         for (int j = 0; j < this->mNBins; ++j) {
-            //(*mCorrelationMatrix)(i, j) = std::pow(covMat(i, j), 2) / (covMat(i, i) * covMat(j, j));
+            //normalize , use absolute sign(if not doesn't work)
             (*mCorrelationMatrix)(i, j) = std::abs(tempCorr(i, j) / std::pow(std::abs(tempCorr(i, i) * tempCorr(j, j)), 0.5));
-            //(*mCorrelationMatrix)(i, j) = tempCorr(i, j);
         }
     }
 }
@@ -289,7 +284,7 @@ void HighNuFCN::SetCovarianceMatrix() {
         if (this->mBinStep*(i+1) <= 300)
             parError(i,i) = 1.;
         else
-            parError(i,i) = 0.1;
+            parError(i,i) = 1;
     }
 
     for (int i = 0; i < this->mNBins; ++i) {
@@ -343,13 +338,7 @@ double HighNuFCN::Correlation() const {
     TMatrixD invertCov(*(this->mCovarianceMatrix));
     TVectorD mulVec2(pars);
     invertCov.Invert();
-    TMatrixD invertCov2(this->mNBins, this->mNBins);
-    for (int i = 0; i < this->mNBins; ++i) {
-        for (int j = 0; j < this->mNBins; ++j) {
-            invertCov2(i, j) = invertCov(i, j);// / std::pow(std::abs(invertCov(i, i) * invertCov(j, j)), 0.5);
-        }
-    }
-    mulVec2 *= invertCov2;
+    mulVec2 *= invertCov;
     return mulVec2 * pars;
 }
 //------------------------------------------------------------------------------
