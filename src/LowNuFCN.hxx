@@ -31,7 +31,9 @@ class LowNuFCN : public RooAbsReal {
         TH1D GetPrediction() const; 
         TH1D GetData() {return this->mData;};
         TMatrixD* GetCovMatrix() const {return this->mCovMat.get();};
+        TMatrixD* GetCovMatrixEnergyBin() const {return this->mCovMatEnergyBin.get();};
         std::vector<RooRealVar*> GetFluxParameters() {return this->mFluxPars;};
+        TH1D GetFittingResult();
 
     private:
         const int mBins = 16;
@@ -44,10 +46,13 @@ class LowNuFCN : public RooAbsReal {
         std::vector<TH1D> mFluxSyst;
         std::vector<Event> mEvents;
         std::vector<RooRealVar*> mFluxPars;
+        std::vector<RooRealVar*> mParsEnergyBins;
 
         std::unique_ptr<RooListProxy> mPulls;
+        std::unique_ptr<RooListProxy> mPullsEnergyBin;
         std::unique_ptr<RooListProxy> mPullsbkg;
         std::unique_ptr<TMatrixD> mCovMat;
+        std::unique_ptr<TMatrixD> mCovMatEnergyBin;
         std::unique_ptr<TVectorD> pullCV; 
         std::unique_ptr<TVectorD> pullUnc;
         std::unique_ptr<TFile> dataFile;
@@ -64,7 +69,7 @@ class LowNuFCN : public RooAbsReal {
         void SetPullCV();
         void SetPullUnc();
         void SetCovMatrix();
-        TMatrixD* PrepareCovMatrix2() const;
+        void SetCovMatrixEnergyBin();
         double GetWeight(int inBin) const;
         Double_t FillEv() const;
         Double_t FillEv2() const;

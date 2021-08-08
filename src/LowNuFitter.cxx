@@ -6,7 +6,8 @@
 std::string inputFluxSystematic;
 std::string inputData;
 int numPars = 0;
-double inputError = 0;
+double inputError = 0.1;
+int printLevel = 0;
 std::string fitOpt = "s";
 bool ParseArgs(int argc, char* argv[]);
 void PrintSyntax();
@@ -19,11 +20,14 @@ int main(int argc, char* argv[])
 
     TH1D beforeFit = fcn.GetPrediction();
     RooMinuit m(fcn);
-    m.setPrintLevel(0);
+    m.setPrintLevel(printLevel);
     m.setStrategy(2);
     RooFitResult* result = m.fit(fitOpt.c_str());
 
     TH1D afterFit = fcn.GetPrediction();
+    TH1D fitResult = fcn.GetFittingResult();
+    fitResult.SetMinimum(0);
+    fitResult.SetMaximum(1);
     TH1D data = fcn.GetData();
 
     TCanvas c;
@@ -34,6 +38,8 @@ int main(int argc, char* argv[])
     afterFit.Draw();
     c.cd(3);
     data.Draw();
+    c.cd(4);
+    fitResult.Draw();
     c.SaveAs("asdf.pdf");
 
     return 0;
@@ -50,12 +56,13 @@ bool ParseArgs(int argc, char* argv[]) {
         {"flux-shift", required_argument, 0, 's'},
         {"data-file",  required_argument, 0, 'd'},
         {"fit-opt",    required_argument, 0, 'f'},
+        {"print-level", required_argument, 0, 'p'},
         {"help",       no_argument,       0, 'h'},
         {0,0,0,0},
     };
 
     while (iarg != -1) {
-        iarg = getopt_long(argc, argv, "s:d:n:e:f:h", longopts, &index);
+        iarg = getopt_long(argc, argv, "s:d:n:e:f:p:h", longopts, &index);
         switch (iarg) {
             case 's' : 
                 {
@@ -83,6 +90,11 @@ bool ParseArgs(int argc, char* argv[]) {
             case 'f' :
                 {
                     fitOpt = optarg;
+                    break;
+                }
+            case 'p' :
+                {
+                    printLevel = std::stoi(optarg);
                     break;
                 }
             case 'h' :
@@ -118,6 +130,8 @@ void PrintSyntax() {
     std::cout << "      r - Save fit result\n";
     std::cout << "      0 - Run Migrad with strategy 0\n";
     std::cout << "      default - s\n";
+    std::cout << "  -p, --print-level ${int}\n";
+    std::cout << "    : None =-1 , Reduced =0 , Normal =1 , ExtraForProblem =2 , Maximum =3 \n";
     std::cout << "  -h, --help\n";
     std::cout << "    : show this message\n";
     std::cout << std::endl;
