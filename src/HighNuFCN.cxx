@@ -5,35 +5,133 @@ bool combinHighNu = false;
 bool TOY = false;
 double TOYCORR = 0;
 
-std::vector<double> fracError;
 
 /////////////////////////////prepare histogram//////////////////////////////////
-HighNuFCN::HighNuFCN(const int inNBin, const int inBinStep)
-    : mNBins(inNBin), mBinStep(inBinStep) {
-        mPulls = std::make_unique<RooListProxy>("mPulls","mPulls",this);
-        for (int i = 0; i < this->mNBins; i++) {
-            RooRealVar* tempPar = new RooRealVar(Form("par%d", i), 
-                    Form("par%d", i+1), 0);
-            tempPar->setConstant(false);
-            if (this->mBinStep*(i+1) <= 300)
-                tempPar->setError(1);
-            else
-                tempPar->setError(1);
-            mParVec.push_back(tempPar);
-            mPulls->add(*tempPar);
+HighNuFCN::HighNuFCN(const int inNBin, const int inBinStep, bool N1HighNu, bool N1NonNeutron, bool N2, bool N3)
+    : mNBins(inNBin), mBinStep(inBinStep), N1HighNu(N1HighNu), N1NonNeutron(N1NonNeutron), N2(N2), N3(N3) {
+        std::cout << "N1HighNu: " << N1HighNu << std::endl;
+        std::cout << "N1NonNeutron: " << N1NonNeutron << std::endl;
+        std::cout << "N2: " << N2 << std::endl;
+        std::cout << "N3: " << N3 << std::endl;
+        InitializeHistograms();
+
+        if (!N1HighNu && !N1NonNeutron && !N2 && !N3) {
+            mPulls = std::make_unique<RooListProxy>("mPulls","mPulls",this);
+            for (int i = 0; i < this->mNBins; i++) {
+                RooRealVar* tempPar = new RooRealVar(Form("par%d", i), 
+                        Form("par%d", i+1), 0);
+                tempPar->setConstant(false);
+                if (this->mBinStep*(i+1) <= 300)
+                    tempPar->setError(1);
+                else
+                    tempPar->setError(1);
+                mParVec.push_back(tempPar);
+                mPulls->add(*tempPar);
+            }
+            this->addServerList(*mPulls);
+            this->mCorrelationMatrixAll = this->SetCorrelationMatrix(*this->mHistNominalAll, *this->mHistShiftAll);
+            this->mCovarianceMatrixAll = this->SetCovarianceMatrix(*this->mCorrelationMatrixAll);
         }
-        this->addServerList(*mPulls);
 
-        this->SetHistGenieNominalError();
-        //this->SetHistG4NominalError();
-        this->SetHistCombinedError();
-        this->SamplingHistograms(1000);
-        this->SetCorrelationMatrix();
-        this->SetCovarianceMatrix();
-        this->SetToyCorrelationMatrix();
-        this->SetToyCovarianceMatrix();
+        if (N1HighNu) {
+            mPullsN1HighNu = std::make_unique<RooListProxy>("mPullsN1HighNu","mPullsN1HighNu",this);
+            for (int i = 0; i < this->mNBins; i++) {
+                RooRealVar* tempPar = new RooRealVar(Form("parN1HighNu%d", i), 
+                        Form("parN1HighNu%d", i+1), 0);
+                tempPar->setConstant(false);
+                if (this->mBinStep*(i+1) <= 300) {
+                    tempPar->setError(1);
+                } else {
+                    tempPar->setError(1);
+                }
+                mParVecN1HighNu.push_back(tempPar);
+                mPullsN1HighNu->add(*tempPar);
+            }
+            this->addServerList(*mPullsN1HighNu);
+            this->mCorrelationMatrixN1HighNu = this->SetCorrelationMatrix(*this->mHistNominalN1HighNu, *this->mHistShiftN1HighNu);
+            this->mCovarianceMatrixN1HighNu = this->SetCovarianceMatrix(*this->mCorrelationMatrixN1HighNu);
+        }
 
-        this->SetTestCov();
+        if (N1NonNeutron) {
+            mPullsN1NonNeutron = std::make_unique<RooListProxy>("mPullsN1NonNeutron","mPullsN1NonNeutron",this);
+            for (int i = 0; i < this->mNBins; i++) {
+                RooRealVar* tempPar = new RooRealVar(Form("parN1NonNeutron%d", i), 
+                        Form("parN1NonNeutron%d", i+1), 0);
+                tempPar->setConstant(false);
+                if (this->mBinStep*(i+1) <= 300)
+                    tempPar->setError(1);
+                else
+                    tempPar->setError(1);
+                mParVecN1NonNeutron.push_back(tempPar);
+                mPullsN1NonNeutron->add(*tempPar);
+            }
+            this->addServerList(*mPullsN1NonNeutron);
+            this->mCorrelationMatrixN1NonNeutron = this->SetCorrelationMatrix(*this->mHistNominalN1NonNeutron, *this->mHistShiftN1NonNeutron);
+            this->mCovarianceMatrixN1NonNeutron = this->SetCovarianceMatrix(*this->mCorrelationMatrixN1NonNeutron);
+        }
+
+        if (N2) {
+            mPullsN2 = std::make_unique<RooListProxy>("mPullsN2","mPullsN2",this);
+            for (int i = 0; i < this->mNBins; i++) {
+                RooRealVar* tempPar = new RooRealVar(Form("parN2%d", i), 
+                        Form("parN2%d", i+1), 0);
+                tempPar->setConstant(false);
+                if (this->mBinStep*(i+1) <= 300)
+                    tempPar->setError(1);
+                else
+                    tempPar->setError(1);
+                mParVecN2.push_back(tempPar);
+                mPullsN2->add(*tempPar);
+            }
+            this->addServerList(*mPullsN2);
+            this->mCorrelationMatrixN2 = this->SetCorrelationMatrix(*this->mHistNominalN2, *this->mHistShiftN2);
+            this->mCovarianceMatrixN2 = this->SetCovarianceMatrix(*this->mCorrelationMatrixN2);
+        }
+
+        if (N3) {
+            mPullsN3 = std::make_unique<RooListProxy>("mPullsN3","mPullsN3",this);
+            for (int i = 0; i < this->mNBins; i++) {
+                RooRealVar* tempPar = new RooRealVar(Form("parN3%d", i), 
+                        Form("parN3%d", i+1), 0);
+                tempPar->setConstant(false);
+                if (this->mBinStep*(i+1) <= 300)
+                    tempPar->setError(1);
+                else
+                    tempPar->setError(1);
+                mParVecN3.push_back(tempPar);
+                mPullsN3->add(*tempPar);
+            }
+            //this->addServerList(*mPullsN3);
+            this->mCorrelationMatrixN3 = this->SetCorrelationMatrix(*this->mHistNominalN3, *this->mHistShiftN3);
+            this->mCovarianceMatrixN3 = this->SetCovarianceMatrix(*this->mCorrelationMatrixN3);
+        }
+
+        //this->SetToyCorrelationMatrix();
+        //this->SetToyCovarianceMatrix();
+
+        //this->SetTestCov();
+}
+//------------------------------------------------------------------------------
+void HighNuFCN::InitializeHistograms() {
+    mHistNominalN1NonNeutron = std::make_unique<TH1D>("", 
+            "n1 non neutron nominal", this->mNBins, 0, this->mNBins * this->mBinStep);
+    mHistNominalN1HighNu = std::make_unique<TH1D>("", 
+            "n1 high nu nominal", this->mNBins, 0, this->mNBins * this->mBinStep);
+    mHistNominalN2 = std::make_unique<TH1D>("", 
+            "n2 nominal", this->mNBins, 0, this->mNBins * this->mBinStep);
+    mHistNominalN3 = std::make_unique<TH1D>("", 
+            "n3 nominal", this->mNBins, 0, this->mNBins * this->mBinStep);
+
+    mHistShiftN1NonNeutron = std::make_unique<TH1D>("", 
+            "n1 non neutron reweighted", this->mNBins, 0, this->mNBins * this->mBinStep);
+    mHistShiftN1HighNu = std::make_unique<TH1D>("", 
+            "n1 high nu reweighted", this->mNBins, 0, this->mNBins * this->mBinStep);
+    mHistShiftN2 = std::make_unique<TH1D>("", 
+            "n2 reweighted", this->mNBins, 0, this->mNBins * this->mBinStep);
+    mHistShiftN3 = std::make_unique<TH1D>("", 
+            "n3 reweighted", this->mNBins, 0, this->mNBins * this->mBinStep);
+
+    this->SetHistograms();
 }
 //------------------------------------------------------------------------------
 std::unique_ptr<TH1D> HighNuFCN::FillHist(std::string inputFile) {
@@ -48,6 +146,7 @@ std::unique_ptr<TH1D> HighNuFCN::FillHist(std::string inputFile) {
     }
     TTree* tempTree = (TTree*)tempFile.Get("tree");
     float recoNu;          tempTree->SetBranchAddress("recoNu", &recoNu);
+    float trueNu;          tempTree->SetBranchAddress("trueNu", &trueNu);
     int numberOfFSNeutron; tempTree->SetBranchAddress("numberOfFSNeutron", 
             &numberOfFSNeutron);
 
@@ -55,11 +154,6 @@ std::unique_ptr<TH1D> HighNuFCN::FillHist(std::string inputFile) {
     for (int i = 0; i < tempTree->GetEntries(); ++i) {
         PrintProgress(i, tempTree->GetEntries());
         tempTree->GetEntry(i);
-        //if (numberOfFSNeutron == 1) continue;
-        if (combinHighNu) {
-            if (300 < recoNu && recoNu < 550) recoNu = 325;
-            if (550 < recoNu && recoNu < 800) recoNu = 375;
-        }
         tempHist->Fill(recoNu);
     }
     //tempHist->Scale(1/tempHist->Integral(), "nosw2");
@@ -69,12 +163,36 @@ std::unique_ptr<TH1D> HighNuFCN::FillHist(std::string inputFile) {
 //------------------------------------------------------------------------------
 void HighNuFCN::SetHistGenieNominal(std::string inputFile) {
     std::cout << __func__ << std::endl;
-    mHistGenieNominal = FillHist(inputFile);
+    mHistNominalAll = FillHist(inputFile);
+
+    TFile tempFile(inputFile.c_str());
+    if (!tempFile.IsOpen()) {
+        std::cout << "in " << __func__ << std::endl;
+        std::cout << "invalid input: " << inputFile << std::endl;
+    }
+    TTree* tempTree = (TTree*)tempFile.Get("tree");
+    float recoNu;          tempTree->SetBranchAddress("recoNu", &recoNu);
+    float trueNu;          tempTree->SetBranchAddress("trueNu", &trueNu);
+    int numberOfFSNeutron; tempTree->SetBranchAddress("numberOfFSNeutron", 
+            &numberOfFSNeutron);
+
+    for (int i = 0; i < tempTree->GetEntries(); ++i) {
+        PrintProgress(i, tempTree->GetEntries());
+        tempTree->GetEntry(i);
+        if (numberOfFSNeutron == 1 && trueNu < 300)
+            mHistNominalN1NonNeutron->Fill(recoNu);
+        if (numberOfFSNeutron == 1 && trueNu > 300)
+            mHistNominalN1HighNu->Fill(recoNu);
+        if (numberOfFSNeutron == 2)
+            mHistNominalN2->Fill(recoNu);
+        if (numberOfFSNeutron > 2)
+            mHistNominalN3->Fill(recoNu);
+    }
 }
 //------------------------------------------------------------------------------
 void HighNuFCN::SetHistGenieShift(std::string inputFile) {
     std::cout << __func__ << std::endl;
-    mHistGenieShift = std::make_unique<TH1D>("", 
+    mHistShiftAll = std::make_unique<TH1D>("", 
             "reweighted", this->mNBins, 0, this->mNBins * this->mBinStep);
 
     TFile tempFile(inputFile.c_str());
@@ -84,42 +202,37 @@ void HighNuFCN::SetHistGenieShift(std::string inputFile) {
     }
     TTree* tempTree = (TTree*)tempFile.Get("tree");
     float recoNu;          tempTree->SetBranchAddress("recoNu", &recoNu);
-    float reWeight;          tempTree->SetBranchAddress("reWeight", &reWeight);
+    float reWeight;        tempTree->SetBranchAddress("reWeight", &reWeight);
+    float trueNu;          tempTree->SetBranchAddress("trueNu", &trueNu);
     int numberOfFSNeutron; tempTree->SetBranchAddress("numberOfFSNeutron", 
             &numberOfFSNeutron);
 
-    std::cout << __func__ << std::endl;
     for (int i = 0; i < tempTree->GetEntries(); ++i) {
         PrintProgress(i, tempTree->GetEntries());
         tempTree->GetEntry(i);
-        //if (numberOfFSNeutron == 1) continue;
-        if (combinHighNu) {
-            if (300 < recoNu && recoNu < 550) recoNu = 325;
-            if (550 < recoNu && recoNu < 800) recoNu = 375;
-        }
-        mHistGenieShift->Fill(recoNu, reWeight);
+        mHistShiftAll->Fill(recoNu, reWeight);
+        if (numberOfFSNeutron == 1 && trueNu < 300) 
+            mHistShiftN1NonNeutron->Fill(recoNu, reWeight);
+        if (numberOfFSNeutron == 1 && trueNu > 300) 
+            mHistShiftN1HighNu->Fill(recoNu, reWeight);
+        if (numberOfFSNeutron == 2)
+            mHistShiftN2->Fill(recoNu, reWeight);
+        if (numberOfFSNeutron > 2)
+            mHistShiftN3->Fill(recoNu, reWeight);
     }
-    mHistGenieShift->Scale(mHistGenieNominal->Integral()/mHistGenieShift->Integral(), "nosw2");
-    //mHistGenieShift = FillHist(inputFile);
+    mHistShiftAll->Scale(mHistNominalAll->Integral()/mHistShiftAll->Integral(), "nosw2");
+    mHistShiftN1NonNeutron->Scale(mHistNominalN1NonNeutron->Integral()/mHistShiftN1NonNeutron->Integral(), "nosw2");
+    mHistShiftN1HighNu->Scale(mHistNominalN1HighNu->Integral()/mHistShiftN1HighNu->Integral(), "nosw2");
+    mHistShiftN2->Scale(mHistNominalN1HighNu->Integral()/mHistShiftN1HighNu->Integral(), "nosw2");
+    mHistShiftN3->Scale(mHistNominalN1HighNu->Integral()/mHistShiftN1HighNu->Integral(), "nosw2");
+    //mHistShiftAll = FillHist(inputFile);
 }
 //------------------------------------------------------------------------------
-void HighNuFCN::SetHistGenieNominalError() {
-
+void HighNuFCN::SetHistograms() {
     //SetHistGenieNominal("analysis_output_G1801a00000AfterCut.root");
     //SetHistGenieShift("analysis_output_G1802a00000AfterCut.root");
     SetHistGenieNominal("reweightAfterCut.root");
     SetHistGenieShift("reweightAfterCut.root");
-
-    for (int i = 0; i < this->mNBins; ++i) {
-        double tempDifference = 0;
-        tempDifference = this->GetHistGenieShift()->GetBinContent(i+1)
-                             - this->GetHistGenieNominal()->GetBinContent(i+1);
-        this->GetHistGenieNominal()->SetBinError(i+1, tempDifference);
-
-        double tempFracError = tempDifference/(this->GetHistGenieNominal()->GetBinContent(i+1));
-        fracError.push_back(tempFracError);
-    }
-
 }
 //------------------------------------------------------------------------------
 void HighNuFCN::SetHistG4Nominal(std::string inputFile) {
@@ -168,58 +281,46 @@ void HighNuFCN::SetHistCombinedError() {
 }
 //------------------------------------------------------------------------------
 ////////////////////////////////sampling histogram//////////////////////////////
-TH1D HighNuFCN::SamplingEachHistogram() {
+TH1D HighNuFCN::SamplingEachHistogram(const TH1D& inNominal, const TH1D& inShift) {
     TH1D tempSample("","tempSample", this->mNBins, 0, 
                     this->mBinStep * this->mNBins);
+
+    TH1D tempNominal(inNominal);
+    for (int i = 0; i < this->mNBins; ++i) {
+        tempNominal.SetBinError(i+1, inNominal.GetBinContent(i+1) - inShift.GetBinContent(i+1));
+    }
 
     TRandom random;
     random.SetSeed(0);
     for (int i = 0; i < this->mNBins; ++i) {
         tempSample.SetBinContent(i+1, //std::max((double)0, 
-                random.Gaus(this->GetHistCombinedNominal()->GetBinContent(i+1),
-                            this->GetHistCombinedNominal()->GetBinError(i+1))
+                random.Gaus(inShift.GetBinContent(i+1),
+                            tempNominal.GetBinError(i+1))
                 //)
                 );
     }
     tempSample.Scale(
-            this->GetHistCombinedNominal()->Integral() / tempSample.Integral(),
+            tempNominal.Integral() / tempSample.Integral(),
             "nosw2"
             );
 
     return tempSample;
 }
 //------------------------------------------------------------------------------
-void HighNuFCN::SamplingHistograms(int inSamplingNumber) {
+std::vector<TH1D> HighNuFCN::SamplingHistograms(int inSamplingNumber, const TH1D& inNominal, const TH1D& inShift) {
     std::cout << __func__ << std::endl;
+    std::vector<TH1D> tempResult(inSamplingNumber);
+
     mSampleResult = std::make_unique<TH1D>("","sampling result", 
             this->mNBins, 0, this->mBinStep * this->mNBins);
     
     for (int i = 0; i < inSamplingNumber; ++i) {
         PrintProgress(i, inSamplingNumber);
-        this->mSampledHist.push_back(this->SamplingEachHistogram());
+        tempResult.at(i) = this->SamplingEachHistogram(inNominal, inShift);
+        //this->mSampledHist.push_back(this->SamplingEachHistogram(inNominal, inShift));
     }
 
-    std::vector<TH1D> bins;
-    for (int i = 0; i < this->mNBins; ++i) {
-        TH1D tempBin("","",20000, 0, 20000);
-        bins.push_back(tempBin);
-    }
-
-    std::cout << "making sample result" << std::endl;
-    for (int i = 0; i < this->mNBins; ++i) {
-        PrintProgress(i, this->mNBins);
-        for (const auto& h : this->mSampledHist) {
-            bins.at(i).Fill(h.GetBinContent(i+1));
-        }
-        this->mSampleResult->SetBinContent(i+1, bins.at(i).GetMean());
-        this->mSampleResult->SetBinError(i+1, bins.at(i).GetRMS());
-        //this->mSampleResult->SetBinContent(i+1, 
-        //        this->GetHistCombinedNominal()->GetBinContent(i+1));
-        //this->mSampleResult->SetBinError(i+1, 
-        //        this->GetHistCombinedNominal()->GetBinError(i+1));
-    }
-
-    std::cout << this->mSampledHist.size()  << std::endl;
+    return tempResult;
 }
 //------------------------------------------------------------------------------
 void HighNuFCN::SaveHist(std::string_view name) const {
@@ -238,16 +339,19 @@ void HighNuFCN::SaveHist(std::string_view name) const {
 }
 //------------------------------------------------------------------------------
 ///////////////////////////////prepare matries//////////////////////////////////
-void HighNuFCN::SetCorrelationMatrix() {
+std::unique_ptr<TMatrixD> HighNuFCN::SetCorrelationMatrix(const TH1D& inNominal, const TH1D& inShift) {
     std::cout << __func__ << std::endl;
     TMatrixD tempCorr(this->mNBins, this->mNBins);
-    mCorrelationMatrix = std::make_unique<TMatrixD>(this->mNBins, this->mNBins);
+
+    auto tempCorrelationMatrix = std::make_unique<TMatrixD>(this->mNBins, this->mNBins);
 
     TMatrixD covMat(this->mNBins, this->mNBins);
     TMatrixD XX(this->mNBins, this->mNBins);
     TVectorD X(this->mNBins);
 
-    for (const auto& h : this->mSampledHist) {
+    std::vector<TH1D> tempSampledHist = this->SamplingHistograms(1000, inNominal, inShift);
+
+    for (const auto& h : tempSampledHist) {
         for (int i = 0; i < this->mNBins; ++i) {
             X(i) += h.GetBinContent(i+1);
             for (int j = 0; j < this->mNBins; ++j) {
@@ -257,12 +361,23 @@ void HighNuFCN::SetCorrelationMatrix() {
     }
     for (int i = 0; i < this->mNBins; ++i) {
         for (int j = 0; j < this->mNBins; ++j) {
-            double Eij = XX(i, j) / this->mSampledHist.size();
-            double Ei = X(i) / this->mSampledHist.size();
-            double Ej = X(j) / this->mSampledHist.size();
+            double Eij = XX(i, j) / tempSampledHist.size();
+            double Ei = X(i) / tempSampledHist.size();
+            double Ej = X(j) / tempSampledHist.size();
             covMat(i, j) = Eij - Ei * Ej;
         }
     }
+
+    std::vector<double> fracError;
+    for (int i = 0; i < this->mNBins; ++i) {
+        double tempDifference = 0;
+        tempDifference = inNominal.GetBinContent(i+1)
+                             - inShift.GetBinContent(i+1);
+
+        double tempFracError = tempDifference;///(inNominal.GetBinContent(i+1));
+        fracError.push_back(tempFracError);
+    }
+
     for (int i = 0; i < this->mNBins; ++i) {
         for (int j = 0; j < this->mNBins; ++j) {
             tempCorr(i, j) = covMat(i, j) / (fracError.at(i) * fracError.at(j));
@@ -271,37 +386,83 @@ void HighNuFCN::SetCorrelationMatrix() {
     for (int i = 0; i < this->mNBins; ++i) {
         for (int j = 0; j < this->mNBins; ++j) {
             //normalize , use absolute sign(if not doesn't work)
-            (*mCorrelationMatrix)(i, j) = std::abs(tempCorr(i, j) / std::pow(std::abs(tempCorr(i, i) * tempCorr(j, j)), 0.5));
+            //(*tempCorrelationMatrix)(i, j) = std::abs
+            //    (
+            //     tempCorr(i, j)
+            //     / std::pow(std::abs(tempCorr(i, i) * tempCorr(j, j)), 0.5));
+            (*tempCorrelationMatrix)(i, j) = //std::abs
+                (
+                 covMat(i, j) / std::pow(covMat(i, i) * covMat(j, j), 0.5)
+                 );
         }
     }
+
+    return std::move(tempCorrelationMatrix);
 }
 //------------------------------------------------------------------------------
-void HighNuFCN::SetCovarianceMatrix() {
+std::unique_ptr<TMatrixD> HighNuFCN::SetCovarianceMatrix(const TMatrixD& inCorrMat) {
     std::cout << __func__ << std::endl;
-    mCovarianceMatrix = std::make_unique<TMatrixD>(this->mNBins, this->mNBins);
+    auto tempCovarianceMatrix = std::make_unique<TMatrixD>(this->mNBins, this->mNBins);
     TMatrixD parError(this->mNBins, this->mNBins);
     for (int i = 0; i < this->mNBins; ++i) {
         if (this->mBinStep*(i+1) <= 300)
             parError(i,i) = 1.;
         else
-            parError(i,i) = 1;
+            parError(i,i) = 1.;
     }
 
     for (int i = 0; i < this->mNBins; ++i) {
         for (int j = 0; j < this->mNBins; ++j) {
-            (*mCovarianceMatrix)(i, j) = (*this->mCorrelationMatrix)(i,j) * (parError(i, i) * parError(j, j)); 
+            (*tempCovarianceMatrix)(i, j) = inCorrMat(i,j) * (parError(i, i) * parError(j, j)); 
         }
     }
+
+    return std::move(tempCovarianceMatrix);
 }
 //------------------------------------------------------------------------------
 /////////////////////////////////////chi2///////////////////////////////////////
-double HighNuFCN::PredictionMinusData() const {
-    TH1D n1NuPrediction("","1n high nu prediction", 
+double HighNuFCN::DoMatrixCal(const TVectorD& inVec, TMatrixD& inMat) const {
+    double tempResult = 0;
+
+    TVectorD vec1(inVec);
+    TVectorD vec2(inVec);
+    TMatrixD invertMat = inMat.Invert();
+    vec1 *= invertMat;
+    tempResult += vec2 * vec1;
+
+    return tempResult;
+}
+double HighNuFCN::PredictionMinusData(const TH1D& inNominal) const {
+    TH1D prediction("","prediction", 
+            this->mNBins, 0, this->mBinStep * this->mNBins);
+    TH1D data("","data", 
             this->mNBins, 0, this->mBinStep * this->mNBins);
 
     for (int i = 0; i < this->mNBins; ++i) {
-        n1NuPrediction.SetBinContent(i+1, this->mHistGenieNominal->GetBinContent(i+1) 
-                * (1 + mParVec.at(i)->getValV()));
+        double tempDataBin = 0;
+        double tempPredBin = 0;
+        if (!N1HighNu && !N1NonNeutron && !N2 && !N3) {
+            tempDataBin += this->mHistNominalAll->GetBinContent(i+1);
+            tempPredBin += this->mHistNominalAll->GetBinContent(i+1) * (1 + mParVec.at(i)->getValV());
+        }
+        if (N1HighNu) {
+            tempDataBin += this->mHistNominalN1HighNu->GetBinContent(i+1);
+            tempPredBin += this->mHistNominalN1HighNu->GetBinContent(i+1) * (1 + mParVecN1HighNu.at(i)->getValV());
+        }
+        if (N1NonNeutron) {
+            tempDataBin += this->mHistNominalN1NonNeutron->GetBinContent(i+1);
+            tempPredBin += this->mHistNominalN1NonNeutron->GetBinContent(i+1) * (1 + mParVecN1NonNeutron.at(i)->getValV());
+        }
+        if (N2) {
+            tempDataBin += this->mHistNominalN2->GetBinContent(i+1);
+            tempPredBin += this->mHistNominalN2->GetBinContent(i+1) * (1 + mParVecN2.at(i)->getValV());
+        }
+        if (N3) {
+            tempDataBin += this->mHistNominalN3->GetBinContent(i+1);
+            tempPredBin += this->mHistNominalN3->GetBinContent(i+1) * (1 + mParVecN3.at(i)->getValV());
+        }
+        data.SetBinContent(i+1, tempDataBin);
+        prediction.SetBinContent(i+1, tempPredBin);
     }
 
     TVectorD difference(this->mNBins);
@@ -309,8 +470,8 @@ double HighNuFCN::PredictionMinusData() const {
         if (this->mBinStep * (i + 1) <= 300)
             difference[i] = 0;
         else
-            difference[i] = mHistGenieNominal->GetBinContent(i+1) 
-                            - n1NuPrediction.GetBinContent(i+1);
+            difference[i] = data.GetBinContent(i+1) 
+                            - prediction.GetBinContent(i+1);
         //std::cout << "difference[" << i << "]: ";
         //std::cout << difference[i] << std::endl;
     }
@@ -318,28 +479,59 @@ double HighNuFCN::PredictionMinusData() const {
     for (int i = 0; i < this->mNBins; ++i) {
         for (int j = 0; j < this->mNBins; ++j) {
             if (i == j)
-                stat(i, j) = 1.0 * this->mHistGenieNominal->GetBinContent(i+1);
+                stat(i, j) = 1.0 * data.GetBinContent(i+1);
             else
                 stat(i, j) = 0.;
         }
     }
-    TVectorD mulVec(difference);
-    stat.Invert();
-    mulVec *= stat;
 
-    return mulVec * difference;
+    return DoMatrixCal(difference, stat);
 }
 //------------------------------------------------------------------------------
 double HighNuFCN::Correlation() const {
-    TVectorD pars(this->mNBins);
-    for (int i = 0; i < this->mNBins; ++i) {
-        pars[i] = mParVec.at(i)->getValV();
+    double tempResult = 0;
+
+    if (!N1HighNu && !N1NonNeutron && !N2 && !N3) {
+        TVectorD pars(this->mNBins);
+        for (int i = 0; i < this->mNBins; ++i) {
+            pars[i] = mParVec.at(i)->getValV();
+        }
+        tempResult += DoMatrixCal(pars, *this->mCovarianceMatrixAll);
     }
-    TMatrixD invertCov(*(this->mCovarianceMatrix));
-    TVectorD mulVec2(pars);
-    invertCov.Invert();
-    mulVec2 *= invertCov;
-    return mulVec2 * pars;
+    
+    if (N1HighNu) {
+        TVectorD parsN1HighNu(this->mNBins);
+        for (int i = 0; i < this->mNBins; ++i) {
+            parsN1HighNu[i] = mParVecN1HighNu.at(i)->getValV();
+        }
+        tempResult += DoMatrixCal(parsN1HighNu, *this->mCovarianceMatrixN1HighNu);
+    }
+    
+    if (N1NonNeutron) {
+        TVectorD parsN1NonNeutron(this->mNBins);
+        for (int i = 0; i < this->mNBins; ++i) {
+            parsN1NonNeutron[i] = mParVecN1NonNeutron.at(i)->getValV();
+        }
+        tempResult += DoMatrixCal(parsN1NonNeutron, *this->mCovarianceMatrixN1NonNeutron);
+    }
+    
+    if (N2) {
+        TVectorD parsN2(this->mNBins);
+        for (int i = 0; i < this->mNBins; ++i) {
+            parsN2[i] = mParVecN2.at(i)->getValV();
+        }
+        tempResult += DoMatrixCal(parsN2, *this->mCovarianceMatrixN2);
+    }
+    
+    if (N3) {
+        TVectorD parsN3(this->mNBins);
+        for (int i = 0; i < this->mNBins; ++i) {
+            parsN3[i] = mParVecN3.at(i)->getValV();
+        }
+        tempResult += DoMatrixCal(parsN3, *this->mCovarianceMatrixN3);
+    }
+
+    return tempResult;
 }
 //------------------------------------------------------------------------------
 double HighNuFCN::ExtraPenaltyForParameters() const {
@@ -355,7 +547,7 @@ double HighNuFCN::ExtraPenaltyForParameters() const {
 //------------------------------------------------------------------------------
 Double_t HighNuFCN::evaluate() const {
     double chi2 = 0;
-    chi2 += this->PredictionMinusData();
+    chi2 += this->PredictionMinusData(*this->mHistNominalN1HighNu);
 
     if (!TOY) {
         chi2 += this->Correlation();
@@ -372,9 +564,6 @@ Double_t HighNuFCN::evaluate() const {
     
     //chi2 += this->TestChi2();
     //chi2 += this->ExtraPenaltyForParameters();
-
-    mParV.push_back(mParVec.at(1)->getValV());
-    mChi2.push_back(chi2);
 
     return chi2;
 }
@@ -435,6 +624,16 @@ Double_t HighNuFCN::evaluate() const {
 //for test
 //for test
 //for test
+void HighNuFCN::SetParVec(std::vector<double> inVec) {
+    if (inVec.size() != this->mParVecN1HighNu.size()) {
+        std::cout << "in " << __func__ << ": " << std::endl;
+        std::cout << "inVec.size() != this->mParVecN1HighNu.size()" << std::endl;
+        return;
+    }
+    for (int i = 0; i < inVec.size(); ++i) {
+        this->mParVecN1HighNu.at(i)->setVal(inVec.at(i));
+    }
+}
 void HighNuFCN::SetTestCov() {
     TMatrixD tempCorr(this->mNBins, this->mNBins);
     mTestCov = std::make_unique<TMatrixD>(this->mNBins, this->mNBins);
@@ -466,19 +665,19 @@ void HighNuFCN::SetTestCov() {
     mTestCov->Draw("colz text");
     c.SaveAs("testCov.pdf");
 
-    TMatrixD invertCov(*(this->mTestCov));
-    invertCov.Invert();
+    TMatrixD invertCov = this->mTestCov->Invert();
+    //invertCov.Invert();
     TCanvas c1;
     invertCov.Draw("colz text");
     c1.SaveAs("inverttestCov.pdf");
 }
 //------------------------------------------------------------------------------
 double HighNuFCN::TestChi2() const {
-    TH1D n1NuPrediction("","1n high nu prediction", 
+    TH1D prediction("","1n high nu prediction", 
             this->mNBins, 0, this->mBinStep * this->mNBins);
 
     for (int i = 0; i < this->mNBins; ++i) {
-        n1NuPrediction.SetBinContent(i+1, this->mHistGenieNominal->GetBinContent(i+1) 
+        prediction.SetBinContent(i+1, this->mHistNominalAll->GetBinContent(i+1) 
                 * mParVec.at(i)->getValV());
     }
 
@@ -487,23 +686,22 @@ double HighNuFCN::TestChi2() const {
         if (this->mBinStep * (i + 1) <= 300)
             difference[i] = 0;
         else
-            difference[i] = mHistGenieNominal->GetBinContent(i+1) 
-                            - n1NuPrediction.GetBinContent(i+1);
+            difference[i] = mHistNominalAll->GetBinContent(i+1) 
+                            - prediction.GetBinContent(i+1);
         //std::cout << "difference[" << i << "]: ";
         //std::cout << difference[i] << std::endl;
     }
-    TMatrixD invertCov(*(this->mTestCov));
+    TMatrixD invertCov = this->mTestCov->Invert();
     //for (int i = 0; i < this->mNBins; ++i) {
-    //    invertCov(i, i) = 1.0 * this->mHistGenieNominal->GetBinContent(i+1);
+    //    invertCov(i, i) = 1.0 * this->mHistNominalAll->GetBinContent(i+1);
     //}
     //for (int i = 0; i < this->mNBins; ++i) {
     //    for (int j = 0; j < this->mNBins; ++j) {
     //        if (i == j) continue;
-    //        invertCov(i, j) = (*mCorrelationMatrix)(i, j) * std::pow(invertCov(i, i), 0.5) * std::pow(invertCov(j, j), 0.5);
+    //        invertCov(i, j) = (*mCorrelationMatrixAll)(i, j) * std::pow(invertCov(i, i), 0.5) * std::pow(invertCov(j, j), 0.5);
     //    }
     //}
     TVectorD mulVec(difference);
-    invertCov.Invert();
     mulVec *= invertCov;
 
     return mulVec * difference;
@@ -529,9 +727,8 @@ double HighNuFCN::CorrelationToyModel() const {
     for (int i = 0; i < this->mNBins; ++i) {
         pars[i] = mParVec.at(i)->getValV();
     }
-    TMatrixD invertToyCov(*(this->mToyCovarianceMatrix));
+    TMatrixD invertToyCov = this->mToyCovarianceMatrix->Invert();
     TVectorD mulVec2(pars);
-    invertToyCov.Invert();
     mulVec2 *= invertToyCov;
     return mulVec2 * pars;
 }
@@ -554,3 +751,36 @@ void HighNuFCN::SetToyCovarianceMatrix() {
     }
 }
 //------------------------------------------------------------------------------
+TMatrixD HighNuFCN::MyInvert(const TMatrixD& inMatrix) const {
+    TMatrixD tempMatrix(inMatrix);
+    int _1 = 0;
+    int _2 = 1;
+    int _3 = 2;
+    double d1 = inMatrix(_1,_1) * (inMatrix(_2,_2) * inMatrix(_3,_3) - inMatrix(_2,_3) * inMatrix(_3,_2));
+    double d2 = - inMatrix(_1,_2) * (inMatrix(_2,_1) * inMatrix(_3,_3) - inMatrix(_2,_3) * inMatrix(_3,_1));
+    double d3 = + inMatrix(_1,_3) * (inMatrix(_2,_1) * inMatrix(_3,_2) - inMatrix(_2,_2) * inMatrix(_3,_1));
+    double det = 0;
+    //double det = inMatrix(_1,_1) * (inMatrix(_2,_2) * inMatrix(_3,_3) - inMatrix(_2,_3) * inMatrix(_3,_2))
+    //           - inMatrix(_1,_2) * (inMatrix(_2,_1) * inMatrix(_3,_3) - inMatrix(_2,_3) * inMatrix(_3,_1))
+    //           + inMatrix(_1,_3) * (inMatrix(_2,_1) * inMatrix(_3,_2) - inMatrix(_2,_2) * inMatrix(_3,_1));
+
+    det = d1 + d2 + d3;
+
+    std::cout << "d1: " << d1 << std::endl;
+    std::cout << "d2: " << d2 << std::endl;
+    std::cout << "d3: " << d3 << std::endl;
+    std::cout << "d1 + d2: " << d1 + d2 << std::endl;
+    std::cout << "d1 + d2 + d3: " << d1 + d2 + d3 << std::endl;
+    std::cout << "det: " << det << std::endl;
+
+    tempMatrix(_1,_1) =  1 * (inMatrix(_2,_2) * inMatrix(_3,_3) - inMatrix(_2,_3) * inMatrix(_3,_2))/det;
+    tempMatrix(_1,_2) = -1 * (inMatrix(_2,_1) * inMatrix(_3,_3) - inMatrix(_2,_3) * inMatrix(_3,_1))/det;
+    tempMatrix(_1,_3) =  1 * (inMatrix(_2,_1) * inMatrix(_3,_2) - inMatrix(_2,_2) * inMatrix(_3,_1))/det;
+    tempMatrix(_2,_1) = -1 * (inMatrix(_1,_2) * inMatrix(_3,_3) - inMatrix(_1,_3) * inMatrix(_3,_2))/det;
+    tempMatrix(_2,_2) =  1 * (inMatrix(_1,_1) * inMatrix(_3,_3) - inMatrix(_1,_3) * inMatrix(_3,_1))/det;
+    tempMatrix(_2,_3) = -1 * (inMatrix(_1,_1) * inMatrix(_3,_2) - inMatrix(_1,_2) * inMatrix(_3,_1))/det;
+    tempMatrix(_3,_1) =  1 * (inMatrix(_1,_2) * inMatrix(_2,_3) - inMatrix(_1,_3) * inMatrix(_2,_2))/det;
+    tempMatrix(_3,_2) = -1 * (inMatrix(_1,_1) * inMatrix(_2,_3) - inMatrix(_1,_3) * inMatrix(_2,_1))/det;
+    tempMatrix(_3,_3) =  1 * (inMatrix(_1,_1) * inMatrix(_2,_2) - inMatrix(_1,_2) * inMatrix(_2,_1))/det;
+    return tempMatrix;
+}
