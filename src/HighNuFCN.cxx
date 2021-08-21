@@ -13,6 +13,7 @@ HighNuFCN::HighNuFCN(const int inNBin, const int inBinStep, bool N1HighNu, bool 
         std::cout << "N1NonNeutron: " << N1NonNeutron << std::endl;
         std::cout << "N2: " << N2 << std::endl;
         std::cout << "N3: " << N3 << std::endl;
+        SetEvents("output_10_reweightAfterCut.root");
         InitializeHistograms();
 
         if (!N1HighNu && !N1NonNeutron && !N2 && !N3) {
@@ -134,6 +135,38 @@ void HighNuFCN::InitializeHistograms() {
     this->SetHistograms();
 }
 //------------------------------------------------------------------------------
+void HighNuFCN::SetEvents(std::string inputFile) {
+    TFile tempFile(inputFile.c_str());
+    if (!tempFile.IsOpen()) {
+        std::cout << "in " << __func__ << std::endl;
+        std::cout << "invalid input: " << inputFile << std::endl;
+    }
+    TTree* tempTree = (TTree*)tempFile.Get("tree");
+    float recoNu;          tempTree->SetBranchAddress("recoNu", &recoNu);
+    float trueNu;          tempTree->SetBranchAddress("trueNu", &trueNu);
+    float reWeight[100];   tempTree->SetBranchAddress("reWeight", &reWeight);
+    int numberOfFSNeutron; tempTree->SetBranchAddress("numberOfFSNeutron", 
+            &numberOfFSNeutron);
+    for (int i = 0; i < tempTree->GetEntries(); ++i) {
+        PrintProgress(i, tempTree->GetEntries());
+        tempTree->GetEntry(i);
+        bool isOk = true;
+        Event tempEvent;
+        tempEvent.recoNu = recoNu;
+        tempEvent.trueNu = trueNu;
+        for (int j = 0; j < 10; ++j) {
+            if (reWeight[j] < 0) {
+                isOk = false;
+                break;
+            }
+            tempEvent.reWeight[j] = reWeight[j];
+        }
+        tempEvent.numberOfFSNeutron = numberOfFSNeutron;
+        if (isOk)
+            this->mEvents.push_back(tempEvent);
+    }
+}
+//------------------------------------------------------------------------------
 std::unique_ptr<TH1D> HighNuFCN::FillHist(std::string inputFile) {
     std::unique_ptr<TH1D> tempHist = std::make_unique<TH1D>(inputFile.c_str(), 
             "nominal", this->mNBins, 0, this->mNBins * this->mBinStep);
@@ -156,6 +189,10 @@ std::unique_ptr<TH1D> HighNuFCN::FillHist(std::string inputFile) {
         tempTree->GetEntry(i);
         tempHist->Fill(recoNu);
     }
+    //for (auto event : this->mEvents) {
+    //    PrintProgress(i, tempTree->GetEntries());
+    //    tempHist->Fill(recoNu);
+    //}
     //tempHist->Scale(1/tempHist->Integral(), "nosw2");
 
     return std::move(tempHist);
@@ -163,30 +200,22 @@ std::unique_ptr<TH1D> HighNuFCN::FillHist(std::string inputFile) {
 //------------------------------------------------------------------------------
 void HighNuFCN::SetHistGenieNominal(std::string inputFile) {
     std::cout << __func__ << std::endl;
-    mHistNominalAll = FillHist(inputFile);
+    mHistNominalAll = std::make_unique<TH1D>(inputFile.c_str(), 
+            "nominal", this->mNBins, 0, this->mNBins * this->mBinStep);
 
-    TFile tempFile(inputFile.c_str());
-    if (!tempFile.IsOpen()) {
-        std::cout << "in " << __func__ << std::endl;
-        std::cout << "invalid input: " << inputFile << std::endl;
-    }
-    TTree* tempTree = (TTree*)tempFile.Get("tree");
-    float recoNu;          tempTree->SetBranchAddress("recoNu", &recoNu);
-    float trueNu;          tempTree->SetBranchAddress("trueNu", &trueNu);
-    int numberOfFSNeutron; tempTree->SetBranchAddress("numberOfFSNeutron", 
-            &numberOfFSNeutron);
-
-    for (int i = 0; i < tempTree->GetEntries(); ++i) {
-        PrintProgress(i, tempTree->GetEntries());
-        tempTree->GetEntry(i);
-        if (numberOfFSNeutron == 1 && trueNu < 300)
-            mHistNominalN1NonNeutron->Fill(recoNu);
-        if (numberOfFSNeutron == 1 && trueNu > 300)
-            mHistNominalN1HighNu->Fill(recoNu);
-        if (numberOfFSNeutron == 2)
-            mHistNominalN2->Fill(recoNu);
-        if (numberOfFSNeutron > 2)
-            mHistNominalN3->Fill(recoNu);
+    int i = 0;
+    for (auto e : this->mEvents) {
+        PrintProgress(i, this->mEvents.size());
+        mHistNominalAll->Fill(e.recoNu);
+        if (e.numberOfFSNeutron == 1 && e.trueNu < 300)
+            mHistNominalN1NonNeutron->Fill(e.recoNu);
+        if (e.numberOfFSNeutron == 1 && e.trueNu > 300)
+            mHistNominalN1HighNu->Fill(e.recoNu);
+        if (e.numberOfFSNeutron == 2)
+            mHistNominalN2->Fill(e.recoNu);
+        if (e.numberOfFSNeutron > 2)
+            mHistNominalN3->Fill(e.recoNu);
+        ++i;
     }
 }
 //------------------------------------------------------------------------------
@@ -195,44 +224,37 @@ void HighNuFCN::SetHistGenieShift(std::string inputFile) {
     mHistShiftAll = std::make_unique<TH1D>("", 
             "reweighted", this->mNBins, 0, this->mNBins * this->mBinStep);
 
-    TFile tempFile(inputFile.c_str());
-    if (!tempFile.IsOpen()) {
-        std::cout << "in " << __func__ << std::endl;
-        std::cout << "invalid input: " << inputFile << std::endl;
+    int i = 0;
+    for (auto e : this->mEvents) {
+        PrintProgress(i, this->mEvents.size());
+        double tempAvgReWeight = 0; 
+        for (int j = 0; j < 10; ++j) {
+            tempAvgReWeight += e.reWeight[j];
+        }
+        tempAvgReWeight /= 10;
+        //std::cout << "tempAvgReWeight: " << tempAvgReWeight << std::endl;
+        
+        mHistShiftAll->Fill(e.recoNu, tempAvgReWeight);
+        if (e.numberOfFSNeutron == 1 && e.trueNu < 300) 
+            mHistShiftN1NonNeutron->Fill(e.recoNu, tempAvgReWeight);
+        if (e.numberOfFSNeutron == 1 && e.trueNu > 300) 
+            mHistShiftN1HighNu->Fill(e.recoNu, tempAvgReWeight);
+        if (e.numberOfFSNeutron == 2)
+            mHistShiftN2->Fill(e.recoNu, tempAvgReWeight);
+        if (e.numberOfFSNeutron > 2)
+            mHistShiftN3->Fill(e.recoNu, tempAvgReWeight);
+        ++i;
     }
-    TTree* tempTree = (TTree*)tempFile.Get("tree");
-    float recoNu;          tempTree->SetBranchAddress("recoNu", &recoNu);
-    float reWeight;        tempTree->SetBranchAddress("reWeight", &reWeight);
-    float trueNu;          tempTree->SetBranchAddress("trueNu", &trueNu);
-    int numberOfFSNeutron; tempTree->SetBranchAddress("numberOfFSNeutron", 
-            &numberOfFSNeutron);
-
-    for (int i = 0; i < tempTree->GetEntries(); ++i) {
-        PrintProgress(i, tempTree->GetEntries());
-        tempTree->GetEntry(i);
-        mHistShiftAll->Fill(recoNu, reWeight);
-        if (numberOfFSNeutron == 1 && trueNu < 300) 
-            mHistShiftN1NonNeutron->Fill(recoNu, reWeight);
-        if (numberOfFSNeutron == 1 && trueNu > 300) 
-            mHistShiftN1HighNu->Fill(recoNu, reWeight);
-        if (numberOfFSNeutron == 2)
-            mHistShiftN2->Fill(recoNu, reWeight);
-        if (numberOfFSNeutron > 2)
-            mHistShiftN3->Fill(recoNu, reWeight);
-    }
-    mHistShiftAll->Scale(mHistNominalAll->Integral()/mHistShiftAll->Integral(), "nosw2");
-    mHistShiftN1NonNeutron->Scale(mHistNominalN1NonNeutron->Integral()/mHistShiftN1NonNeutron->Integral(), "nosw2");
-    mHistShiftN1HighNu->Scale(mHistNominalN1HighNu->Integral()/mHistShiftN1HighNu->Integral(), "nosw2");
-    mHistShiftN2->Scale(mHistNominalN1HighNu->Integral()/mHistShiftN1HighNu->Integral(), "nosw2");
-    mHistShiftN3->Scale(mHistNominalN1HighNu->Integral()/mHistShiftN1HighNu->Integral(), "nosw2");
-    //mHistShiftAll = FillHist(inputFile);
 }
 //------------------------------------------------------------------------------
 void HighNuFCN::SetHistograms() {
     //SetHistGenieNominal("analysis_output_G1801a00000AfterCut.root");
     //SetHistGenieShift("analysis_output_G1802a00000AfterCut.root");
-    SetHistGenieNominal("reweightAfterCut.root");
-    SetHistGenieShift("reweightAfterCut.root");
+    //SetHistGenieNominal("reweightAfterCut.root");
+    //SetHistGenieShift("reweightAfterCut.root");
+
+    SetHistGenieNominal("output_10_reweightAfterCut.root");
+    SetHistGenieShift("output_10_reweightAfterCut.root");
 }
 //------------------------------------------------------------------------------
 void HighNuFCN::SetHistG4Nominal(std::string inputFile) {
@@ -299,25 +321,105 @@ TH1D HighNuFCN::SamplingEachHistogram(const TH1D& inNominal, const TH1D& inShift
                 //)
                 );
     }
-    tempSample.Scale(
-            tempNominal.Integral() / tempSample.Integral(),
-            "nosw2"
-            );
+    //tempSample.Scale(
+    //        tempNominal.Integral() / tempSample.Integral(),
+    //        "nosw2"
+    //        );
 
     return tempSample;
 }
 //------------------------------------------------------------------------------
 std::vector<TH1D> HighNuFCN::SamplingHistograms(int inSamplingNumber, const TH1D& inNominal, const TH1D& inShift) {
     std::cout << __func__ << std::endl;
+    /*
     std::vector<TH1D> tempResult(inSamplingNumber);
 
     mSampleResult = std::make_unique<TH1D>("","sampling result", 
             this->mNBins, 0, this->mBinStep * this->mNBins);
-    
+
     for (int i = 0; i < inSamplingNumber; ++i) {
         PrintProgress(i, inSamplingNumber);
         tempResult.at(i) = this->SamplingEachHistogram(inNominal, inShift);
         //this->mSampledHist.push_back(this->SamplingEachHistogram(inNominal, inShift));
+    }
+    */
+
+    std::vector<TH1D> tempResult;
+
+    //TFile tempFile("output_10_reweightAfterCut.root");
+
+    //TTree* tempTree = (TTree*)tempFile.Get("tree");
+    //float recoNu;          tempTree->SetBranchAddress("recoNu", &recoNu);
+    //float reWeight[100];        tempTree->SetBranchAddress("reWeight", &reWeight);
+    //float trueNu;          tempTree->SetBranchAddress("trueNu", &trueNu);
+    //int numberOfFSNeutron; tempTree->SetBranchAddress("numberOfFSNeutron", 
+    //        &numberOfFSNeutron);
+
+    //for (int j = 0; j < 10; ++j) {
+    //    std::cout << "loop: " << j << std::endl;
+    //    TH1D tempHist("", "sample", this->mNBins, 0, this->mNBins * this->mBinStep);
+    //    for (int i = 0; i < tempTree->GetEntries(); ++i) {
+    //        PrintProgress(i, tempTree->GetEntries());
+    //        tempTree->GetEntry(i);
+    //        if (reWeight[j] == 0 || reWeight[j] < 0)
+    //            continue;
+
+    //        if (!N1HighNu && !N1NonNeutron && !N2 && !N3) {
+    //            tempHist.Fill(recoNu, reWeight[j]);
+    //        }
+    //        if (N1HighNu) {
+    //            if (numberOfFSNeutron == 1 && trueNu > 300) 
+    //                tempHist.Fill(recoNu, reWeight[j]);
+    //        }
+    //        if (N1NonNeutron) {
+    //            if (numberOfFSNeutron == 1 && trueNu < 300) 
+    //                tempHist.Fill(recoNu, reWeight[j]);
+    //        }
+    //        if (N2) {
+    //            if (numberOfFSNeutron == 2)
+    //                tempHist.Fill(recoNu, reWeight[j]);
+    //        }
+    //        if (N3) {
+    //            if (numberOfFSNeutron > 2)
+    //                tempHist.Fill(recoNu, reWeight[j]);
+    //        }
+    //    }
+    //    //tempHist.Scale(this->mHistNominalAll->Integral()/tempHist.Integral(), "nosw2");
+    //    tempResult.push_back(tempHist);
+    //}
+    
+    for (int j = 0; j < 10; ++j) {
+        std::cout << "loop: " << j << std::endl;
+        TH1D tempHist("", "sample", this->mNBins, 0, this->mNBins * this->mBinStep);
+        int i = 0;
+        for (auto e : this->mEvents) {
+            PrintProgress(i, this->mEvents.size());
+            ++i;
+            if (e.reWeight[j] == 0 || e.reWeight[j] < 0)
+                continue;
+
+            if (!N1HighNu && !N1NonNeutron && !N2 && !N3) {
+                tempHist.Fill(e.recoNu, e.reWeight[j]);
+            }
+            if (N1HighNu) {
+                if (e.numberOfFSNeutron == 1 && e.trueNu > 300) 
+                    tempHist.Fill(e.recoNu, e.reWeight[j]);
+            }
+            if (N1NonNeutron) {
+                if (e.numberOfFSNeutron == 1 && e.trueNu < 300) 
+                    tempHist.Fill(e.recoNu, e.reWeight[j]);
+            }
+            if (N2) {
+                if (e.numberOfFSNeutron == 2)
+                    tempHist.Fill(e.recoNu, e.reWeight[j]);
+            }
+            if (N3) {
+                if (e.numberOfFSNeutron > 2)
+                    tempHist.Fill(e.recoNu, e.reWeight[j]);
+            }
+        }
+        //tempHist.Scale(this->mHistNominalAll->Integral()/tempHist.Integral(), "nosw2");
+        tempResult.push_back(tempHist);
     }
 
     return tempResult;

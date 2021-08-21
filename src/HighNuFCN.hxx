@@ -19,6 +19,13 @@
 extern bool TOY;
 extern double TOYCORR;
 
+struct Event
+{
+    float recoNu = {};
+    float reWeight[100] = {};
+    float trueNu = {};      
+    int numberOfFSNeutron = {};
+};
 
 class HighNuFCN : public RooAbsReal
 {
@@ -74,6 +81,9 @@ class HighNuFCN : public RooAbsReal
         bool N1NonNeutron;
         bool N2;
         bool N3;
+
+        std::vector<Event> mEvents;
+        void SetEvents(std::string inputFile);
     private:
         const int mNBins;
         const int mBinStep;
