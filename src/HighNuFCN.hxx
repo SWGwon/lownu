@@ -160,7 +160,7 @@ class HighNuFCN : public RooAbsReal
         double ExtraPenaltyForParameters() const;
         double CorrelationToyModel() const;
 
-        double DoMatrixCal(const TVectorD& inVec, TMatrixD& inMat) const;
+        double DoMatrixCal(const TVectorD& inVec, TMatrixD inMat) const;
 };
 
 #endif

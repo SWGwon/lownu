@@ -113,28 +113,6 @@ HighNuFCN::HighNuFCN(const int inNBin, const int inBinStep, bool N1HighNu, bool 
         //this->SetTestCov();
 }
 //------------------------------------------------------------------------------
-void HighNuFCN::InitializeHistograms() {
-    mHistNominalN1NonNeutron = std::make_unique<TH1D>("", 
-            "n1 non neutron nominal", this->mNBins, 0, this->mNBins * this->mBinStep);
-    mHistNominalN1HighNu = std::make_unique<TH1D>("", 
-            "n1 high nu nominal", this->mNBins, 0, this->mNBins * this->mBinStep);
-    mHistNominalN2 = std::make_unique<TH1D>("", 
-            "n2 nominal", this->mNBins, 0, this->mNBins * this->mBinStep);
-    mHistNominalN3 = std::make_unique<TH1D>("", 
-            "n3 nominal", this->mNBins, 0, this->mNBins * this->mBinStep);
-
-    mHistShiftN1NonNeutron = std::make_unique<TH1D>("", 
-            "n1 non neutron reweighted", this->mNBins, 0, this->mNBins * this->mBinStep);
-    mHistShiftN1HighNu = std::make_unique<TH1D>("", 
-            "n1 high nu reweighted", this->mNBins, 0, this->mNBins * this->mBinStep);
-    mHistShiftN2 = std::make_unique<TH1D>("", 
-            "n2 reweighted", this->mNBins, 0, this->mNBins * this->mBinStep);
-    mHistShiftN3 = std::make_unique<TH1D>("", 
-            "n3 reweighted", this->mNBins, 0, this->mNBins * this->mBinStep);
-
-    this->SetHistograms();
-}
-//------------------------------------------------------------------------------
 void HighNuFCN::SetEvents(std::string inputFile) {
     TFile tempFile(inputFile.c_str());
     if (!tempFile.IsOpen()) {
@@ -150,6 +128,9 @@ void HighNuFCN::SetEvents(std::string inputFile) {
     for (int i = 0; i < tempTree->GetEntries(); ++i) {
         PrintProgress(i, tempTree->GetEntries());
         tempTree->GetEntry(i);
+
+        if (numberOfFSNeutron == 1 && trueNu < 300) continue;
+
         bool isOk = true;
         Event tempEvent;
         tempEvent.recoNu = recoNu;
@@ -167,9 +148,31 @@ void HighNuFCN::SetEvents(std::string inputFile) {
     }
 }
 //------------------------------------------------------------------------------
+void HighNuFCN::InitializeHistograms() {
+    mHistNominalN1NonNeutron = std::make_unique<TH1D>("", 
+            "n1 non neutron nominal;reco #nu (MeV)", this->mNBins, 0, this->mNBins * this->mBinStep);
+    mHistNominalN1HighNu = std::make_unique<TH1D>("", 
+            "n1 high nu nominal;reco #nu (MeV)", this->mNBins, 0, this->mNBins * this->mBinStep);
+    mHistNominalN2 = std::make_unique<TH1D>("", 
+            "n2 nominal;reco #nu (MeV)", this->mNBins, 0, this->mNBins * this->mBinStep);
+    mHistNominalN3 = std::make_unique<TH1D>("", 
+            "n3 nominal;reco #nu (MeV)", this->mNBins, 0, this->mNBins * this->mBinStep);
+
+    mHistShiftN1NonNeutron = std::make_unique<TH1D>("", 
+            "n1 non neutron reweighted;reco #nu (MeV)", this->mNBins, 0, this->mNBins * this->mBinStep);
+    mHistShiftN1HighNu = std::make_unique<TH1D>("", 
+            "n1 high nu reweighted;reco #nu (MeV)", this->mNBins, 0, this->mNBins * this->mBinStep);
+    mHistShiftN2 = std::make_unique<TH1D>("", 
+            "n2 reweighted;reco #nu (MeV)", this->mNBins, 0, this->mNBins * this->mBinStep);
+    mHistShiftN3 = std::make_unique<TH1D>("", 
+            "n3 reweighted;reco #nu (MeV)", this->mNBins, 0, this->mNBins * this->mBinStep);
+
+    this->SetHistograms();
+}
+//------------------------------------------------------------------------------
 std::unique_ptr<TH1D> HighNuFCN::FillHist(std::string inputFile) {
     std::unique_ptr<TH1D> tempHist = std::make_unique<TH1D>(inputFile.c_str(), 
-            "nominal", this->mNBins, 0, this->mNBins * this->mBinStep);
+            "nominal;reco #nu (MeV)", this->mNBins, 0, this->mNBins * this->mBinStep);
             //inputFile.c_str(), this->mNBins, 0, this->mNBins * this->mBinStep);
 
     TFile tempFile(inputFile.c_str());
@@ -201,7 +204,7 @@ std::unique_ptr<TH1D> HighNuFCN::FillHist(std::string inputFile) {
 void HighNuFCN::SetHistGenieNominal(std::string inputFile) {
     std::cout << __func__ << std::endl;
     mHistNominalAll = std::make_unique<TH1D>(inputFile.c_str(), 
-            "nominal", this->mNBins, 0, this->mNBins * this->mBinStep);
+            "nominal;reco #nu (MeV)", this->mNBins, 0, this->mNBins * this->mBinStep);
 
     int i = 0;
     for (auto e : this->mEvents) {
@@ -222,7 +225,7 @@ void HighNuFCN::SetHistGenieNominal(std::string inputFile) {
 void HighNuFCN::SetHistGenieShift(std::string inputFile) {
     std::cout << __func__ << std::endl;
     mHistShiftAll = std::make_unique<TH1D>("", 
-            "reweighted", this->mNBins, 0, this->mNBins * this->mBinStep);
+            "reweighted;reco #nu (MeV)", this->mNBins, 0, this->mNBins * this->mBinStep);
 
     int i = 0;
     for (auto e : this->mEvents) {
@@ -250,11 +253,9 @@ void HighNuFCN::SetHistGenieShift(std::string inputFile) {
 void HighNuFCN::SetHistograms() {
     //SetHistGenieNominal("analysis_output_G1801a00000AfterCut.root");
     //SetHistGenieShift("analysis_output_G1802a00000AfterCut.root");
-    //SetHistGenieNominal("reweightAfterCut.root");
-    //SetHistGenieShift("reweightAfterCut.root");
 
-    SetHistGenieNominal("output_10_reweightAfterCut.root");
-    SetHistGenieShift("output_10_reweightAfterCut.root");
+    SetHistGenieNominal("output_10loop_reweightAfterCut.root");
+    SetHistGenieShift("output_10loop_reweightAfterCut.root");
 }
 //------------------------------------------------------------------------------
 void HighNuFCN::SetHistG4Nominal(std::string inputFile) {
@@ -523,7 +524,7 @@ std::unique_ptr<TMatrixD> HighNuFCN::SetCovarianceMatrix(const TMatrixD& inCorrM
 }
 //------------------------------------------------------------------------------
 /////////////////////////////////////chi2///////////////////////////////////////
-double HighNuFCN::DoMatrixCal(const TVectorD& inVec, TMatrixD& inMat) const {
+double HighNuFCN::DoMatrixCal(const TVectorD& inVec, TMatrixD inMat) const {
     double tempResult = 0;
 
     TVectorD vec1(inVec);
@@ -596,7 +597,7 @@ double HighNuFCN::Correlation() const {
     if (!N1HighNu && !N1NonNeutron && !N2 && !N3) {
         TVectorD pars(this->mNBins);
         for (int i = 0; i < this->mNBins; ++i) {
-            pars[i] = mParVec.at(i)->getValV();
+            pars[i] = mParVec.at(i)->getValV() - 0;
         }
         tempResult += DoMatrixCal(pars, *this->mCovarianceMatrixAll);
     }
@@ -649,20 +650,23 @@ double HighNuFCN::ExtraPenaltyForParameters() const {
 //------------------------------------------------------------------------------
 Double_t HighNuFCN::evaluate() const {
     double chi2 = 0;
-    chi2 += this->PredictionMinusData(*this->mHistNominalN1HighNu);
-
-    if (!TOY) {
-        chi2 += this->Correlation();
-    } else {
-        chi2 += this->CorrelationToyModel();
-    }
+    double P_D = this->PredictionMinusData(*this->mHistNominalN1HighNu);
+    double CORR = this->Correlation();
+    chi2 += P_D;
+    chi2 += CORR;
+    //if (!TOY) {
+    //    chi2 += this->Correlation();
+    //} else {
+    //    chi2 += this->CorrelationToyModel();
+    //}
 
     //for (int i = 0; i < this->mNBins; ++i) {
     //    std::cout << "p[" << i << "]: " << mParVec.at(i)->getValV() << std::endl;
     //}
-    //std::cout << "P-D: " << this->PredictionMinusData() << std::endl;
-    //std::cout << "P-CV: " << this->Correlation() << std::endl;
-    //std::cout << "chi2: " << chi2 << std::endl;
+    std::cout << "------------------------------" << std::endl;
+    std::cout << "P-D: " << P_D << std::endl;
+    std::cout << "P-CV: " << CORR << std::endl;
+    std::cout << "chi2: " << chi2 << std::endl;
     
     //chi2 += this->TestChi2();
     //chi2 += this->ExtraPenaltyForParameters();

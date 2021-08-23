@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
     RooMinuit m(fcn);
     m.setPrintLevel(printLevel);
     m.setStrategy(2);
-    //RooFitResult* result = m.fit(fitOpt.c_str());
+    RooFitResult* result = m.fit(fitOpt.c_str());
 
 
     TH1D* nominal = fcn.GetHistGenieNominal();
