@@ -395,7 +395,7 @@ void PrintResult()
     std::cout << "|-reduced sample size: " << sig[7] << std::endl;
     std::cout << "|-signal cut efficiency: " << sig[7] / totalNumberOfEvents << std::endl;
     std::cout << "|-purity: " << sig[7] / (sig[7] + bkg[7]) << std::endl;
-    std::cout << "|-output: " << outName + "AfterCut.root" << std::endl;
+    std::cout << "|-output: " << outName << std::endl;
     PrintBar(barSize);
 }
 //---------------------------------------------------------------------------------------------------------------
